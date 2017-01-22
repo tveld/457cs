@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/sendfile.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
 
 int main(int argc, char **argv){
 	int sockfd = socket(AF_INET, SOCK_STREAM,0);
@@ -64,8 +68,33 @@ int main(int argc, char **argv){
 	
 		// fetch file if it exists
 		int success = 1;
-
+		FILE *file;
 		
+		int fd; //file descriptor
+		fd = open(filename, O_RDONLY);	
+		
+		if(fd == -1){
+			success = 0;
+		}
+
+		// send file to the client
+		
+		// get the size of the file
+		struct stat stat_buf;
+		fstat(fd, &stat_buf);
+		
+		// use sendfile	
+		offset = 0;
+    		rc = sendfile (clientsocket, fd, &offset, stat_buf.st_size);
+    		if (rc == -1) {
+      			printf("Error sending file");
+      			exit(1);
+    		}	
+		
+		close(fd)
+
+
+		// send response to client
 		char response[5000];
 
 	        if(success == 1){

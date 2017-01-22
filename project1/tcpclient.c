@@ -31,6 +31,7 @@ int main(int argc, char** argv){
 	if(err < 0){
 		printf("Error getting the port number\n");
 	}
+	// validate port number
 	if(port < 1024 || port > 49000){
 		printf("This is not a valid port.");
 		printf("  Please pick a port in the range of 1024 to 4900.\n");
