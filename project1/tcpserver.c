@@ -4,7 +4,6 @@
 //Due 1/20/17
 //tcpserver.c
  
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,6 +12,12 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/sendfile.h>
+#include <sys/types.h>
 
 int main(int argc, char **argv){
 	int sockfd = socket(AF_INET, SOCK_STREAM,0);
@@ -71,7 +76,7 @@ int main(int argc, char **argv){
 		FILE *file;
 		
 		int fd; //file descriptor
-		fd = open(filename, O_RDONLY);	
+		fd = open(fname, O_RDONLY);	
 		
 		if(fd == -1){
 			success = 0;
@@ -83,15 +88,24 @@ int main(int argc, char **argv){
 		struct stat stat_buf;
 		fstat(fd, &stat_buf);
 		
+
+		/* send size of file to client
+		int fsize = stat_buf.st_size;
+		int senderr = send(clientsocket, &fsize, sizeof(fsize), 0);
+		if(senderr < 0){
+			printf("Error sending the client the size of the file");
+		}
+		*/
 		// use sendfile	
-		offset = 0;
-    		rc = sendfile (clientsocket, fd, &offset, stat_buf.st_size);
+		off_t offset = 0;
+		
+    		int rc = sendfile (clientsocket, fd, &offset, stat_buf.st_size);
     		if (rc == -1) {
       			printf("Error sending file");
       			exit(1);
     		}	
 		
-		close(fd)
+		close(fd);
 
 
 		// send response to client
@@ -104,7 +118,7 @@ int main(int argc, char **argv){
 		}
 				
 		// send to client response
-		send(clientsocket, response,strlen(response)+1,0);
+		//send(clientsocket, response,strlen(response)+1,0);
 		close(clientsocket);	
 	}	
 	

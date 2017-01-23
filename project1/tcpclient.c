@@ -72,14 +72,36 @@ int main(int argc, char** argv){
 	send(sockfd, fname,strlen(fname)+1,0);
 	
 	//recieve echo
+		int recieved = 0;
 		int len = sizeof(serveraddr);
 		int clientsocket = accept(sockfd, (struct sockaddr*) &serveraddr, &len);
-		
-		char ln[5000];
-
-		recv(sockfd,ln,5000,0);
-		printf("%s\n",ln);
 	
-		close(clientsocket);
+		//int *fsize;
+		//recv(sockfd,fsize,sizeof(fsize),0);
+		//printf("Size of : %d\n\n", fsize);
+		
+		/*
+		char recvBuff[4096];
+		recieved = recv(sockfd,recvBuff,1,0);
+		
+		FILE *recvFile = fopen ("newtext.txt", "w");
+
+		if(recieved != 0){
+			fwrite(recvBuff, 4096, 1, recvFile);
+		}
+		*/
+
+		char *buff = (char*)malloc(4096);
+		char *position = buff;
+		FILE *file = fopen("newimg.jpg", "w");
+		int bytes = 0;
+
+		while( (bytes = recv(sockfd,position,4096,0)) > 0){
+			fwrite(position, 1, bytes, file);
+		}
+
+		free(buff);
+		fclose(file);
+	close(clientsocket);
 }
 
