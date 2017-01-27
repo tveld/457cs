@@ -89,13 +89,6 @@ int main(int argc, char **argv){
 		fstat(fd, &stat_buf);
 		
 
-		/* send size of file to client
-		int fsize = stat_buf.st_size;
-		int senderr = send(clientsocket, &fsize, sizeof(fsize), 0);
-		if(senderr < 0){
-			printf("Error sending the client the size of the file");
-		}
-		*/
 		// use sendfile	
 		off_t offset = 0;
 		

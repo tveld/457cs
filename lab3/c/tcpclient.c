@@ -1,12 +1,37 @@
 //GVSU CIS 457 - Data Communications
-////Lab 2
+////Lab 3
 ////Troy Veldhuizen
-////Due 1/20/17
+////Due 1/27/17
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
+
+struct clientinfo{
+	struct sockaddr_in addr;
+	int socket;
+};
+
+void* recieve_message(void *arg){
+	int run = 1;
+	struct clientinfo ci = *(struct clientinfo *)arg;
+	int clientsocket = ci.socket;
+	char line[5000];
+
+	while(run == 1){	
+		// e is the number of bytes recieved
+		int e = recv(clientsocket,line,5000,0);
+		if(e < 0){
+			printf("Error recieving\n");
+			return 1;
+		}
+		printf("\nGot from the client: %s\n", line);
+	}
+	close(clientsocket);
+}
+
 
 int main(int argc, char** argv){
     
@@ -55,25 +80,35 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
-	//send data
+		// set up recieving thread lurking in background
 
-	printf("Enter a message from client:  ");
-	char line[5000];
-	scanf("%s",line);
-
-	// added one for the null char at the end
-	// strlen is a poor way to check non strings lol
-	send(sockfd, line,strlen(line)+1,0);
-	
-	//recieve echo
-		int len = sizeof(serveraddr);
-		int clientsocket = accept(sockfd, (struct sockaddr*) &serveraddr, &len);
+		//int len = sizeof(serveraddr);
+		//int clientsocket = accept(sockfd,(struct sockaddr*)&serveraddr,&len);
 		
-		char ln[5000];
+		struct clientinfo ci;
+		ci.socket = sockfd;
+		ci.addr = serveraddr;
 
-		recv(sockfd,ln,5000,0);
-		printf("Echoed back from server: %s\n",ln);
 	
-		close(clientsocket);
+		pthread_t childrec;
+		pthread_create(&childrec, NULL, recieve_message, &ci);
+		pthread_detach(childrec); // will clean up thread when function ends
+
+		char line[5000];
+
+		printf("Enter a message from client:  ");
+
+		while (fgets(line, 5000, stdin) != NULL) {
+
+			// added one for the null char at the end
+			// strlen is a poor way to check non strings lol
+			int senderr = send(sockfd, line,strlen(line)+1,0);
+		
+			if(senderr < 0){
+				printf("error sending");
+			}
+	}
 }
+
+
 

@@ -1,0 +1,12 @@
+
+** (eclipse:11946): WARNING **: Could not open X display
+Eclipse: Cannot open display: 
+
+** (java:11948): WARNING **: Could not open X display
+Eclipse: Cannot open display: 
+org.eclipse.m2e.logback.configuration: The org.eclipse.m2e.logback.configuration bundle was activated before the state location was initialized.  Will retry after the state location is initialized.
+Eclipse:
+GTK+ Version Check
+Eclipse:
+An error has occurred. See the log file
+/home/veldhuit/.eclipse/org.eclipse.platform_4.6.0_185596441_linux_gtk_x86_64/configuration/1485365680774.log.
