@@ -31,14 +31,14 @@ void* recieve_message(void *arg){
 		int clientsocket = ci.socket;
 		char line[5000];
 		// e is the number of bytes recieved
-		while(run == 1){
+		//while(run == 1){
+
 			int e = recv(clientsocket,line,5000,0);
 			if(e < 0){
 				printf("Error recieving\n");
 				return 1;
 			}
-			printf("\nI'm here\n");
-			printf("\nGot from the client: %s\n", line);
+			printf("\nGot from the client %d: %s\n", clientsocket, line);
 			
 
 			// fetch file if it exists
@@ -61,21 +61,23 @@ void* recieve_message(void *arg){
 			
 			// send size
 			int size = htonl(stat_buf.st_size);
-			send(clientsocket, &size, sizeof(size), 0);
-
+			int senderr = send(clientsocket, &size, sizeof(size), 0);
+			
+			//printf("Send error : %d", senderr);
 			
 			// use sendfile	
 			off_t offset = 0;
 		  	int rc = sendfile (clientsocket, fd, &offset, stat_buf.st_size);
+				//printf("Send file err: %d", rc);
 			close(fd);
-		}
+		//}
 	
 }
 
 
 int main(int argc, char **argv){
 	int sockfd = socket(AF_INET, SOCK_STREAM,0);
-
+	
 
 	struct sockaddr_in serveraddr, clientaddr;
 	serveraddr.sin_family = AF_INET;
@@ -108,13 +110,16 @@ int main(int argc, char **argv){
 
 	// does not handle multiple clients concurrently
 	while(1){
+
+		int newsock = socket(AF_INET, SOCK_STREAM,0);
+
 		int clientsocket = 0;
 		int len = sizeof(clientaddr);
 		//blocking call: waits for connection
 		clientsocket = accept(sockfd,(struct sockaddr*)&clientaddr,&len);
 	
 		if(clientsocket >= 0){
-			printf("Connected to client\n");
+			printf("Connected to client %d\n", clientsocket);
 		}
 	
 		struct clientinfo ci;
@@ -127,8 +132,8 @@ int main(int argc, char **argv){
 		pthread_t childrec;
 		pthread_create(&childrec, NULL, recieve_message, &ci);
 		pthread_detach(childrec); // will clean up thread when function ends
-		
-		
+}
+
 	
 		
 
@@ -146,7 +151,6 @@ int main(int argc, char **argv){
 		send(clientsocket, response,strlen(response)+1,0);
 		close(clientsocket);
 	*/
-	}	
 	
 	// one socket to listen to incomeing
 	// pass off to one socket for specific client	
