@@ -21,32 +21,37 @@
 
 int main(int argc, char **argv){
 	int sockfd = socket(AF_INET, SOCK_STREAM,0);
+	int port = 0;    // port to listen on
+	int e = -1;      // connection return value
 
 	struct sockaddr_in serveraddr, clientaddr;
 	serveraddr.sin_family = AF_INET;
 	
-	// ask for port number
-	printf("What port do you want to listen to? \n");
-	int port;
-	int err = scanf("%d", &port);
-	if(err < 0){
-		printf("Error getting the port number\n");
-	}
-	if(port < 1024 || port > 49000){
-		printf("This is not a valid port.");
-		printf(" Please pick a port in the range of 1024 to 4900.\n");
-		return 1;	
-	}
+	while(e<0){
+       	    while(port < 1024 || port  > 49000){
+	      // ask for port number
+	      printf("What port do you want to listen to? \n");
+	      char input[100];
+	      scanf("%s", &input);
+	      port = atoi(input);
+	
+	      // validate input
+	      if(port < 1024 || port  > 49000){
+	        printf("This is not a valid port number.");
+	        printf(" Please pick a port in the range of 1024 to 4900.\n");	
+	        }
+	      }
 	
 	serveraddr.sin_port = htons(port); //had to match
 	serveraddr.sin_addr.s_addr = INADDR_ANY;
 
-	int e = bind(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+        e = bind(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 	
-	//check for error
-	if(e < 0){
+	    //check for error
+	    if(e < 0){
 		printf("There was an error binding the address\n");
-		return 1;
+	        printf("Resetting connection process...\n");
+	    }
 	}
 	
 	listen(sockfd,10);
