@@ -1,7 +1,10 @@
 //GVSU CIS 457 - Data Communications
-////Lab 2
-////Troy Veldhuizen
-////Due 1/20/17
+//TCP Server
+//Troy Veldhuizen
+//Matt Noblett
+//Matt Pairitz
+//Due 02/06/17
+//tcpclient.c
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -69,23 +72,44 @@ int main(int argc, char** argv){
 		printf("There was an error with connecting to server.\n");
 		return 1;
 	}
+    while(1){
 
+        
 	//send data
-
-	printf("Enter the filename you wish to recieve:  ");
+	printf("Enter the filename you wish to recieve, or 'Quit' to exit:  ");
 	scanf("%s",fname);
 
+    if(strcmp(fname, "Quit") == 0){
+        send(sockfd, fname, strlen(fname)+1, 0);
+        printf("Disconnecting from Server...");
+        close(sockfd);
+        exit(0);
+    }
+
+    if(strcmp(fname, "List") == 0 ){
+        
+        send(sockfd, fname, strlen(fname)+1, 0);
+        int filecount = 0;
+        recv(sockfd,  &filecount, sizeof(filecount), 0);
+        int count = ntohl(filecount);
+        while(count>0){
+            recv(sockfd, fname, 5000, 0);
+            printf("Files available for transfer  %s\n", fname);
+            count--;
+        }
+    }
 
 
-	printf("Enter a name for the new file:  ");
-	scanf("%s",nname);
+    else{
+
+        printf("Enter a name for the new file:  ");
+        scanf("%s",nname);
 	
-	// added one for the null char at the end
-	// strlen is a poor way to check non strings lol
-
-	send(sockfd, fname,strlen(fname)+1,0);
-	
-	//recieve echo
+        // added one for the null char at the end
+        // strlen is a poor way to check non strings lol
+        send(sockfd, fname,strlen(fname)+1,0);
+        
+        //recieve echo
 		
 
 		int recieved = 0;
@@ -102,18 +126,6 @@ int main(int argc, char** argv){
 
 		int size = 0;
 		recv(sockfd, &size, sizeof(size), 0);
-		
-
-		//printf("\nSize in bytes: %d\n", ntohl(size));
-		
-		// recieve file	
-		//
-		
-		/*	
-		bytes = recv(sockfd, position, 798916, 0);
-		printf("\nbytes: %d\n", bytes);
-		fwrite(position,1, bytes, file);
-		*/
 		
 		
 		int total = 0;	
@@ -133,9 +145,9 @@ int main(int argc, char** argv){
 				fwrite(position, 1, bytes, file);
 			} 
 		}
-	
 		free(buff);
 		fclose(file);
-	close(clientsocket);
+    }
+}
 }
 
