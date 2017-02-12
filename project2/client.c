@@ -53,7 +53,7 @@ int main(int argc, char** argv){
 
 		// recieve file size
 		int size = 0;
-		recvfrom(sockfd, size, sizeof(size), 0, (struct sockaddr*)&serveraddr, &len);
+		recvfrom(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&serveraddr, &len);
 		
 		printf("\nBytes %d\n", ntohl(size));
  
