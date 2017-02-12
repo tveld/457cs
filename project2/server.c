@@ -25,7 +25,7 @@ int main(int argc, char** argv){
 		printf("There was an error creating the socket'n");
 		return 1;
 	}
-	
+	/*
 	int port;
 	int error;
 
@@ -39,11 +39,11 @@ int main(int argc, char** argv){
     printf("This is not a valid port number");
     printf(" Please pick a port in the range of 1024 to 4900.\n");	
   }
-
-
+	*/
+        
 	struct sockaddr_in serveraddr, clientaddr;
 	serveraddr.sin_family=AF_INET;
-	serveraddr.sin_port=htons(port);
+	serveraddr.sin_port=htons(9333);
 	serveraddr.sin_addr.s_addr= INADDR_ANY;
 	
 	bind(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
