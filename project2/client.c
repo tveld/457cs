@@ -45,7 +45,7 @@ int main(int argc, char** argv){
 		fgets(fname, 5000, stdin);
 		
 		// send filename
-		sendto(sockfd, fname, strlen(fname), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+		sendto(sockfd, fname, strlen(fname) - 1, 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 		
 		int len = sizeof(serveraddr);
 		char responce[5000];
@@ -54,7 +54,7 @@ int main(int argc, char** argv){
 		int size = 0;
 		recvfrom(sockfd, size, sizeof(size), 0, (struct sockaddr*)&serveraddr, &len);
 		
-		printf("\nThis is the size %d\n", ntohl(size));
+		printf("\nBytes %d\n", ntohl(size));
  
 		// recieve file
 		/*

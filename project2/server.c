@@ -53,34 +53,29 @@ int main(int argc, char** argv){
 		char fname[5000];
 		int len = sizeof(clientaddr);
 		recvfrom(sockfd, fname, 5000, 0, (struct sockaddr*)&clientaddr, &len);
-		printf("\nGot from client %s\n", fname);
 		
+		printf("Length of string: %d\n", strlen(fname));
 
 		// fetch the file if it exists
-		FILE *file;
-
-
 		int fd; //file descriptor
-		fd = fopen("testpicture.jpg", "r");
-		printf("Got file open\n");
+		fd = open(fname, O_RDONLY);
 
+
+		// send file to the client
+		
 		// get the size of the file
 		struct stat stat_buf;
 		fstat(fd, &stat_buf);
 		printf("\nbytes: %d\n", stat_buf.st_size);
-
-		// send size
+		
 		int size = htonl(stat_buf.st_size);
 
-		printf("\nServer file size %d\n", stat_buf.st_size);
-
-		sendto(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
-
+		
 
 		// send over file size
-
+		sendto(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
 		// setup packet
-		char packet[1024];
+		//char packet[1024];
 
 		// Send File
 		//sendto(sockfd, fname, strlen(fname)+1, 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
