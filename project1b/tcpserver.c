@@ -94,8 +94,8 @@ void* recieve_message(void *arg){
                     // get the size of the file
                     struct stat stat_buf;
                     fstat(fd, &stat_buf);
-                    //printf("\nbytes: %d\n", stat_buf.st_size);
-                
+                    printf("\nbytes: %d\n", stat_buf.st_size);
+                	
                     // send size
                     int size = htonl(stat_buf.st_size);
                     int senderr = send(clientsocket, &size, sizeof(size), 0);
