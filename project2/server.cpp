@@ -139,7 +139,7 @@ int main() {
 
     // setup server port
     serveraddr.sin_family=AF_INET;
-    serveraddr.sin_port=htons(9333);
+    serveraddr.sin_port=htons(port);
     serveraddr.sin_addr.s_addr= INADDR_ANY;
 
     bind(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
@@ -179,8 +179,10 @@ int main() {
 
     receiving = true;
 
-    // send over initial responce
+	int size = htonl(st.st_size);
 
+    // send over initial size
+	sendto(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
 
 
     //send file

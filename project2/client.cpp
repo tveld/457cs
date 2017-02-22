@@ -9,7 +9,7 @@ int maxSeq;
 int totalPackets = 0;
 int packetCounter = 0;
 
-int totalBytes = 798916;
+int totalBytes = 0;
 int bytesWritten = 0;
 
 FILE* fd;
@@ -52,7 +52,7 @@ void recvFile(int sockfd, sockaddr_in serveraddr){
 
             //printf("Packet Counter: %d\n", packetCounter);
 
-            if(packetCounter == 799){
+            if(packetCounter == totalPackets){
                 fclose(fd);
                 printf("Exiting program\n");
                 receiving = false;
@@ -113,6 +113,18 @@ int main() {
     // send filename
     sendto(sockfd, fname, strlen(fname), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
 
+	// recieve file size
+	int size = 0;
+	int len = sizeof(serveraddr); 
+	recvfrom(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&serveraddr, (socklen_t *) &len);
+	totalBytes = ntohl(size);
+
+	//calculate total number of packets we need recieved
+    totalPackets = totalBytes / 1000;
+
+    if ((totalBytes % 1000) != 0) {
+        ++totalPackets;
+    }
 
     // make new file
     fd = fopen(nname, "w");
