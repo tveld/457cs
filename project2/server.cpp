@@ -79,6 +79,19 @@ void reSendWindow(){
     }
 }
 
+void checkOutOfOrder(){
+    int len = outOfOrder.size();
+    while(len > 0){
+        int seq;
+        seq = outOfOrder.front();
+        if(seq == windowQueue.front().seqNum){
+            windowQueue.pop();
+            outOfOrder.pop();
+            checkOutOfOrder();
+        }
+        --len;
+    }
+}
 int recvAck(){
     int seq = 0;
     int len = sizeof(clientaddr);
@@ -96,6 +109,7 @@ int recvAck(){
                 printf("Acknowledged Packet: %d\n", seqNum);
                 windowQueue.pop();
                 ++ackCounter;
+                checkOutOfOrder();
                 // Check if we have acknowledged all packets
                 if(ackCounter == totalPackets){
                     // we have acknowledge all packets
@@ -105,6 +119,7 @@ int recvAck(){
                 return REG;
             } else {
                 // store in bucket for out of order
+                outOfOrder.push(seq);
             }
         } else {
             //timeout
@@ -144,7 +159,7 @@ int main() {
         printf("Error getting the port number\n");
     }
 
-		// validate port number
+    // validate port number
     if(port < 1024 || port > 49000){
         printf("This is not a valid port.");
         printf("  Please pick a port in the range of 1024 to 4900.\n");
@@ -193,10 +208,10 @@ int main() {
 
     receiving = true;
 
-	int size = htonl(st.st_size);
+    int size = htonl(st.st_size);
 
     // send over initial size
-	sendto(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
+    sendto(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
 
 
     //send file
