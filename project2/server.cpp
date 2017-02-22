@@ -82,16 +82,23 @@ void reSendWindow(){
 void checkOutOfOrder(){
     int len = outOfOrder.size();
     while(len > 0){
-        int seq;
-        seq = outOfOrder.front();
-        if(seq == windowQueue.front().seqNum){
+        if(outOfOrder.front() == windowQueue.front().seqNum){
+            printf("Acknowledged Packet: %d\n", windowQueue.front().seqNum);
             windowQueue.pop();
             outOfOrder.pop();
+            ++ackCounter;
+
+            len = 0;
             checkOutOfOrder();
+        } else {
+            // move seq num to back of queue
+            outOfOrder.push((int &&) outOfOrder.front());
+            outOfOrder.pop();
         }
         --len;
     }
 }
+
 int recvAck(){
     int seq = 0;
     int len = sizeof(clientaddr);
@@ -110,15 +117,17 @@ int recvAck(){
                 windowQueue.pop();
                 ++ackCounter;
                 checkOutOfOrder();
+
                 // Check if we have acknowledged all packets
                 if(ackCounter == totalPackets){
                     // we have acknowledge all packets
                     return ENDOFFILE;
                 }
+
                 // regular return from function
                 return REG;
             } else {
-                // store in bucket for out of order
+                // store in queue for out of order
                 outOfOrder.push(seq);
             }
         } else {
