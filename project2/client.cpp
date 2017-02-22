@@ -1,3 +1,9 @@
+// UDP Reliability Project
+// Troy Veldhuizen
+// Matt Noblett
+// Matt Pairitz
+// client.cpp
+
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>

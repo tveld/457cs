@@ -1,3 +1,9 @@
+// UDP Reliability Project
+// Troy Veldhuizen
+// Matt Noblett
+// Matt Pairitz
+// server.cpp
+
 #include <iostream>
 #include <queue>
 #include <sys/socket.h>
@@ -26,6 +32,7 @@ struct packet {
 };
 
 queue<packet> windowQueue;
+queue<int> outOfOrder;
 
 int nextSeq(){
     seqNum = (seqNum % 9) + 1;
@@ -135,6 +142,13 @@ int main() {
     int errPort = scanf("%d", &port);
     if(errPort < 0){
         printf("Error getting the port number\n");
+    }
+
+		// validate port number
+    if(port < 1024 || port > 49000){
+        printf("This is not a valid port.");
+        printf("  Please pick a port in the range of 1024 to 4900.\n");
+        return 1;
     }
 
     // setup server port
