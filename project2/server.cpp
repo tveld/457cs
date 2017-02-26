@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <queue>
+#include <set>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
@@ -32,7 +33,7 @@ struct packet {
 };
 
 queue<packet> windowQueue;
-queue<int> outOfOrder;
+set<int> outOfOrder;
 
 int nextSeq(){
     seqNum = (seqNum % 9) + 1;
@@ -80,22 +81,13 @@ void reSendWindow(){
 }
 
 void checkOutOfOrder(){
-    int len = outOfOrder.size();
-    while(len > 0){
-        if(outOfOrder.front() == windowQueue.front().seqNum){
-            printf("Acknowledged Packet: %d\n", windowQueue.front().seqNum);
-            windowQueue.pop();
-            outOfOrder.pop();
-            ++ackCounter;
-
-            len = 0;
-            checkOutOfOrder();
-        } else {
-            // move seq num to back of queue
-            outOfOrder.push((int &&) outOfOrder.front());
-            outOfOrder.pop();
-        }
-        --len;
+    // check if front element is in the set
+    if(outOfOrder.count(windowQueue.front().seqNum) == 1){
+        printf("Acknowledged Packet: %d\n", windowQueue.front().seqNum);
+        outOfOrder.erase(windowQueue.front().seqNum);
+        windowQueue.pop();
+        ++ackCounter;
+        checkOutOfOrder();
     }
 }
 
@@ -128,10 +120,11 @@ int recvAck(){
                 return REG;
             } else {
                 // store in queue for out of order
-                outOfOrder.push(seq);
+                outOfOrder.insert(seq);
             }
         } else {
             //timeout
+            printf("Timeout");
             recvingAck = TIMEOUT;
         }
     }
@@ -232,7 +225,7 @@ int main() {
         if (rtrn == ENDOFFILE) {
             receiving = false;
         } else if (rtrn == TIMEOUT) {
-            //reSendWindow(sockfd, clientaddr);
+            reSendWindow();
         }
     }
 
