@@ -124,7 +124,6 @@ int recvAck(){
             }
         } else {
             //timeout
-            printf("Timeout");
             recvingAck = TIMEOUT;
         }
     }
@@ -225,7 +224,7 @@ int main() {
         if (rtrn == ENDOFFILE) {
             receiving = false;
         } else if (rtrn == TIMEOUT) {
-            reSendWindow();
+            //reSendWindow();
         }
     }
 
