@@ -68,7 +68,7 @@ void checkOutOfOrder() {
         bytesWritten += write;
         ++packetCounter;
 
-        printf("Packet recieved %d\n", outOfOrder.find(windowQueue.front()));
+        printf("Out of order packet recieved %d\n", outOfOrder.at( windowQueue.front()).seqNum);
         fwrite(outOfOrder.at(windowQueue.front()).data, 1, write, fd);
 
         sendAck(windowQueue.front());
@@ -116,8 +116,6 @@ void recvFile(){
 
                 // check if any in out of order queue is next seq
                 checkOutOfOrder();
-
-                printf("After out of order");
 
                 if (packetCounter == totalPackets) {
                     fclose(fd);
