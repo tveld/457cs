@@ -154,7 +154,7 @@ int main() {
 
     // set timeout period
     struct timeval timeout;
-    timeout.tv_sec = 5;
+    timeout.tv_sec = time;
     timeout.tv_usec = 0;
 
     // set socket to timeout
