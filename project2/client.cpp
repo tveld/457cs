@@ -38,7 +38,7 @@ queue<int> windowQueue;
 map<int, packet> outOfOrder;
 
 int nextSeq(){
-    seqNum = (seqNum % 9) + 1;
+    seqNum = (seqNum % 10) + 1;
     return seqNum;
 }
 
@@ -64,6 +64,21 @@ void sendAck(int seqNum){
 		exit(0); //exit program
     }
 }
+
+bool inWindow(int seqNum){
+	bool returnVal = false;
+	int size = windowQueue.size();
+	for(int i = 0; i < size; ++i){
+		if(seqNum == windowQueue.front()){
+			returnVal = true;
+		}
+		windowQueue.push((int &&) windowQueue.front());
+		windowQueue.pop();
+	}
+
+	return returnVal;
+}
+
 
 void checkOutOfOrder() {
     // check if front element is key in map
@@ -91,8 +106,6 @@ void checkOutOfOrder() {
 }
 
 void recvFile(){
-
-
 
     receiving = true;
     while(receiving){
@@ -126,9 +139,20 @@ void recvFile(){
                 checkOutOfOrder();
 
             } else {
-                printf("Out of order packet: %d\n", tempPacket.seqNum);
-                // store in map
-                outOfOrder[tempPacket.seqNum] = tempPacket;
+				printf("Sent Out Of Order Ack: %d\n", tempPacket.seqNum);
+    				int sendSeq = htonl(tempPacket.seqNum);
+    				sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+               
+				if(inWindow(tempPacket.seqNum)){
+					printf("Out of order packet: %d\n", tempPacket.seqNum);
+                			// store in map
+					if (outOfOrder.count(tempPacket.seqNum) == 1) {
+						outOfOrder.erase(tempPacket.seqNum);
+						outOfOrder[tempPacket.seqNum] = tempPacket;
+						    } else {
+						outOfOrder[tempPacket.seqNum] = tempPacket;
+					}
+				}
 				
             }
         }
@@ -189,8 +213,11 @@ int main() {
     // recieve file size
     int size = 0;
     int len = sizeof(serveraddr);
+    
     recvfrom(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&serveraddr, (socklen_t *) &len);
     totalBytes = ntohl(size);
+    
+	printf("Total bytes: %d\n", totalBytes);
 
     //calculate total number of packets we need recieved
     totalPackets = totalBytes / 1000;

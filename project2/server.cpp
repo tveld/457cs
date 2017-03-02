@@ -18,9 +18,10 @@ using namespace std;
 #define REG 0
 
 int totalPackets = 0;   // total packets we need to successfully send
-int packetsInMem = 0;  // total packets  sent
+int packetsInMem = 0;   // total packets  sent
 int ackCounter = 0;     // total packets acknowledged
 int seqNum = 0;         // current sequence number to send
+
 bool receiving = true;  // true if currently recieving
 int sockfd;
 struct sockaddr_in serveraddr;
@@ -36,7 +37,7 @@ queue<packet> windowQueue;
 set<int> outOfOrder;
 
 int nextSeq(){
-    seqNum = (seqNum % 9) + 1;
+    seqNum = (seqNum % 10) + 1;
     return seqNum;
 }
 
@@ -69,18 +70,10 @@ void fillWindow(){
     return;
 }
 
-void reSendWindow(){
-	printf("In resend window\n");
-    int size = windowQueue.size();
-	printf("Window size: %d\n", size);
-    while(size >0){
-        packet sendPack = windowQueue.front();
-        printf("Re-Send Packet: %d\n", sendPack.seqNum);
-        sendPacket(sendPack);
-        windowQueue.push((packet &&) windowQueue.front());
-        windowQueue.pop();
-	--size;
-    }
+void reSend(){
+	packet sendPack = windowQueue.front();
+	printf("Re-Send Packet: %d\n", sendPack.seqNum);
+	sendPacket(sendPack);
 }
 
 void checkOutOfOrder(){
@@ -90,6 +83,7 @@ void checkOutOfOrder(){
         outOfOrder.erase(windowQueue.front().seqNum);
         windowQueue.pop();
         ++ackCounter;
+		printf("Number of Packets: %d\n", ackCounter);
         checkOutOfOrder();
     }
 }
@@ -102,7 +96,7 @@ int recvAck(){
     while(recvingAck) {
 
 	//printf("Before timeout\n");
-        int err = recvfrom(sockfd, &seq, sizeof(seq), 0, (struct sockaddr *) &clientaddr, (socklen_t *) &len);
+    int err = recvfrom(sockfd, &seq, sizeof(seq), 0, (struct sockaddr *) &clientaddr, (socklen_t *) &len);
 	printf("Return status: %d\n", err);
 
         // Check for timeout case
@@ -114,6 +108,7 @@ int recvAck(){
                 printf("Acknowledged Packet: %d\n", seqNum);
                 windowQueue.pop();
                 ++ackCounter;
+				printf("Number of Packets: %d\n", ackCounter);
                 checkOutOfOrder();
 
                 // Check if we have acknowledged all packets
@@ -220,9 +215,9 @@ int main() {
     int size = htonl(st.st_size);
 
     // send over initial size
+
     sendto(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
 	
-
     //send file
     while (receiving) {
 
@@ -234,8 +229,8 @@ int main() {
         }
 
 		if (rtrn == -1) {
-			printf("Calling resend window");
-            reSendWindow();
+			printf("Calling resend window\n");
+            reSend();
         }
     }
 
