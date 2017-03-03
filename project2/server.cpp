@@ -10,6 +10,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <string.h>
+#include <openssl/md5.h>
 
 using namespace std;
 
@@ -31,6 +33,7 @@ FILE* fd;               // file we read from
 struct packet {
     int seqNum;         //the sequence number of the packet
     char data[1000];    // the data portion of the packet
+    char md5[40];
 };
 
 queue<packet> windowQueue;
@@ -47,6 +50,24 @@ packet buildPacket(){
     fread(pkt.data, 1, 1000, fd);
     return pkt;
 }
+
+void checksum(packet Packet){
+
+    unsigned char digest[16];
+    const char* string = Packet.data;
+
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, string, strlen(string));
+    MD5_Final(digest, &ctx);
+
+    char mdString[40];
+    for (int i = 0; i < 16; i++)
+        sprintf(&mdString[i*2], "%02x", (unsigned int)digest[i]);
+    strcpy(Packet.md5, mdString);
+    printf("md5 digest: %s\n", mdString);
+}
+
 
 void sendPacket(packet sendPack){
     printf("Send Packet: %d\n", sendPack.seqNum);
@@ -106,9 +127,10 @@ int recvAck(){
             // Check if we can move window
             if (seqNum == windowQueue.front().seqNum) {
                 printf("Acknowledged Packet: %d\n", seqNum);
-                windowQueue.pop();
+		checksum(windowQueue.front());
+		windowQueue.pop();
                 ++ackCounter;
-				printf("Number of Packets: %d\n", ackCounter);
+		printf("Number of Packets: %d\n", ackCounter);
                 checkOutOfOrder();
 
                 // Check if we have acknowledged all packets

@@ -11,6 +11,10 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sstream>
+#include <iomanip>
+#include <inttypes.h>
+#include <openssl/md5.h>
 
 using namespace std;
 
@@ -32,6 +36,7 @@ struct sockaddr_in serveraddr;
 struct packet {
     int seqNum; //the sequence number of the packet
     char data[1000]; // the data portion of the packet
+    char md5[40];
 };
 
 queue<int> windowQueue;
@@ -42,7 +47,30 @@ int nextSeq(){
     return seqNum;
 }
 
-void fillWindow(){
+bool checksum(packet Packet){
+    
+    unsigned char digest[16];
+    const char* string = Packet.data;
+    bool check;
+    char mdString[40]; 
+ 
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, string, strlen(string));
+    MD5_Final(digest, &ctx);
+    
+    for (int i = 0; i < 16; i++)
+        sprintf(&mdString[i*2], "%02x", (unsigned int)digest[i]);
+    strcpy(Packet.md5, mdString);
+    if (strcmp(mdString, Packet.md5) == 0){
+	check = true;
+    } else {
+	check = false;
+    }
+    return check;
+}
+
+void fillWindow(){  
     while(windowQueue.size() < 5){
         windowQueue.push(nextSeq());
     }
@@ -111,7 +139,6 @@ void recvFile(){
     while(receiving){
 
         packet tempPacket;
-
         int len = sizeof(serveraddr);
         int err = recvfrom(sockfd, &tempPacket, sizeof(tempPacket), 0, (struct sockaddr*)&serveraddr, (socklen_t *) &len);
 
@@ -119,24 +146,25 @@ void recvFile(){
 
             // check if in order
             if (tempPacket.seqNum == windowQueue.front()) {
-                int write;
-                if ((totalBytes - bytesWritten) >= 1000) {
-                    write = 1000;
-                } else {
-                    write = totalBytes - bytesWritten;
-                }
-                printf("Packet recieved %d\n", tempPacket.seqNum);
-                fwrite(tempPacket.data, 1, write, fd);
+                // check if MD5 hash matches
+		if (checksum(tempPacket)){	
+			int write;
+                	if ((totalBytes - bytesWritten) >= 1000) {
+                	    write = 1000;
+                	} else {
+                    	write = totalBytes - bytesWritten;
+               		 }	
+                	printf("Packet recieved %d\n", tempPacket.seqNum);
+                	fwrite(tempPacket.data, 1, write, fd);
+                	bytesWritten += write;
+                	sendAck(tempPacket.seqNum);
 
+                	windowQueue.pop();
+               		fillWindow();
 
-                bytesWritten += write;
-                sendAck(tempPacket.seqNum);
-
-                windowQueue.pop();
-                fillWindow();
-
-                // check if any in out of order queue is next seq
-                checkOutOfOrder();
+                	// check if any in out of order queue is next seq
+                	checkOutOfOrder();
+		}
 
             } else {
 				printf("Sent Out Of Order Ack: %d\n", tempPacket.seqNum);
