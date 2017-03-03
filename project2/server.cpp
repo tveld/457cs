@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <openssl/md5.h>
+//#include <openssl/md5.h>
 
 using namespace std;
 
@@ -23,6 +23,8 @@ int totalPackets = 0;   // total packets we need to successfully send
 int packetsInMem = 0;   // total packets  sent
 int ackCounter = 0;     // total packets acknowledged
 int seqNum = 0;         // current sequence number to send
+int resendCnt = 0;		// count the number of resends
+int lastResend = 0;
 
 bool receiving = true;  // true if currently recieving
 int sockfd;
@@ -51,6 +53,7 @@ packet buildPacket(){
     return pkt;
 }
 
+/*
 void checksum(packet Packet){
 
     unsigned char digest[16];
@@ -67,6 +70,7 @@ void checksum(packet Packet){
     strcpy(Packet.md5, mdString);
     printf("md5 digest: %s\n", mdString);
 }
+*/
 
 
 void sendPacket(packet sendPack){
@@ -95,6 +99,18 @@ void reSend(){
 	packet sendPack = windowQueue.front();
 	printf("Re-Send Packet: %d\n", sendPack.seqNum);
 	sendPacket(sendPack);
+	
+	if(lastResend == sendPack.seqNum){
+		++resendCnt;
+		if(resendCnt == 15){
+			printf("Client probably is dead, I'm going to stop trying :)\n");
+			exit(0);
+		}
+	} else {
+		resendCnt = 0;
+	}
+
+	lastResend = sendPack.seqNum;
 }
 
 void checkOutOfOrder(){
@@ -127,7 +143,7 @@ int recvAck(){
             // Check if we can move window
             if (seqNum == windowQueue.front().seqNum) {
                 printf("Acknowledged Packet: %d\n", seqNum);
-		checksum(windowQueue.front());
+		//checksum(windowQueue.front());
 		windowQueue.pop();
                 ++ackCounter;
 		printf("Number of Packets: %d\n", ackCounter);

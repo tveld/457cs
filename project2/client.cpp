@@ -14,7 +14,7 @@
 #include <sstream>
 #include <iomanip>
 #include <inttypes.h>
-#include <openssl/md5.h>
+//#include <openssl/md5.h>
 
 using namespace std;
 
@@ -47,6 +47,7 @@ int nextSeq(){
     return seqNum;
 }
 
+/*
 bool checksum(packet Packet){
     
     unsigned char digest[16];
@@ -69,7 +70,7 @@ bool checksum(packet Packet){
     }
     return check;
 }
-
+*/
 void fillWindow(){  
     while(windowQueue.size() < 5){
         windowQueue.push(nextSeq());
@@ -85,11 +86,16 @@ void sendAck(int seqNum){
 	printf("Packet counter: %d\n", packetCounter);
 
 	if (packetCounter == totalPackets) {
-        fclose(fd);
-        printf("Exiting program\n");
-        receiving = false;
 
-		exit(0); //exit program
+	for(int i = 0; i < 10; ++i){
+		sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+	}
+
+	fclose(fd);
+	printf("Exiting program\n");
+	receiving = false;
+
+	exit(0); //exit program
     }
 }
 
@@ -147,24 +153,24 @@ void recvFile(){
             // check if in order
             if (tempPacket.seqNum == windowQueue.front()) {
                 // check if MD5 hash matches
-		if (checksum(tempPacket)){	
-			int write;
-                	if ((totalBytes - bytesWritten) >= 1000) {
-                	    write = 1000;
-                	} else {
-                    	write = totalBytes - bytesWritten;
-               		 }	
-                	printf("Packet recieved %d\n", tempPacket.seqNum);
-                	fwrite(tempPacket.data, 1, write, fd);
-                	bytesWritten += write;
-                	sendAck(tempPacket.seqNum);
+		//if (checksum(tempPacket)){	
+		int write;
+        	if ((totalBytes - bytesWritten) >= 1000) {
+        	    write = 1000;
+        	} else {
+            	write = totalBytes - bytesWritten;
+       		 }	
+        	printf("Packet recieved %d\n", tempPacket.seqNum);
+        	fwrite(tempPacket.data, 1, write, fd);
+        	bytesWritten += write;
+        	sendAck(tempPacket.seqNum);
 
-                	windowQueue.pop();
-               		fillWindow();
+        	windowQueue.pop();
+       		fillWindow();
 
-                	// check if any in out of order queue is next seq
-                	checkOutOfOrder();
-		}
+        	// check if any in out of order queue is next seq
+        	checkOutOfOrder();
+		//}
 
             } else {
 				printf("Sent Out Of Order Ack: %d\n", tempPacket.seqNum);
