@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <string.h>
-//#include <openssl/md5.h>
+#include <openssl/md5.h>
 
 using namespace std;
 
@@ -53,7 +53,7 @@ packet buildPacket(){
     return pkt;
 }
 
-/*
+
 void checksum(packet Packet){
 
     unsigned char digest[16];
@@ -70,7 +70,7 @@ void checksum(packet Packet){
     strcpy(Packet.md5, mdString);
     printf("md5 digest: %s\n", mdString);
 }
-*/
+
 
 
 void sendPacket(packet sendPack){
@@ -133,9 +133,12 @@ int recvAck(){
     while(recvingAck) {
 
 	//printf("Before timeout\n");
-    int err = recvfrom(sockfd, &seq, sizeof(seq), 0, (struct sockaddr *) &clientaddr, (socklen_t *) &len);
+        int err = recvfrom(sockfd, &seq, sizeof(seq), 0, (struct sockaddr *) &clientaddr, (socklen_t *) &len);
 	printf("Return status: %d\n", err);
 
+	if(err == -3){
+	  reSend();
+	}
         // Check for timeout case
         if(err != -1) {
             int seqNum = ntohl(seq);
@@ -143,7 +146,6 @@ int recvAck(){
             // Check if we can move window
             if (seqNum == windowQueue.front().seqNum) {
                 printf("Acknowledged Packet: %d\n", seqNum);
-		//checksum(windowQueue.front());
 		windowQueue.pop();
                 ++ackCounter;
 		printf("Number of Packets: %d\n", ackCounter);
@@ -160,7 +162,7 @@ int recvAck(){
             } else {
                 // store in queue for out of order
                 outOfOrder.insert(seq);
-				return 0;
+	      	return 0;
             }
         } else {
             //timeout
@@ -266,10 +268,15 @@ int main() {
             receiving = false;
         }
 
-		if (rtrn == -1) {
-			printf("Calling resend window\n");
-            reSend();
+	if (rtrn == -1) {
+	  printf("Calling resend window\n");
+          reSend();
         }
+
+	if(rtrn == -3){
+	  printf("Hashes didn't match, resending");
+	  reSend();
+	}
     }
 
     printf("File transfer complete\n");

@@ -14,7 +14,7 @@
 #include <sstream>
 #include <iomanip>
 #include <inttypes.h>
-//#include <openssl/md5.h>
+#include <openssl/md5.h>
 
 using namespace std;
 
@@ -47,7 +47,6 @@ int nextSeq(){
     return seqNum;
 }
 
-/*
 bool checksum(packet Packet){
     
     unsigned char digest[16];
@@ -70,7 +69,7 @@ bool checksum(packet Packet){
     }
     return check;
 }
-*/
+
 void fillWindow(){  
     while(windowQueue.size() < 5){
         windowQueue.push(nextSeq());
@@ -82,14 +81,14 @@ void sendAck(int seqNum){
     printf("Sent Packet Ack: %d\n", seqNum);
     int sendSeq = htonl(seqNum);
     sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
-	++packetCounter;
-	printf("Packet counter: %d\n", packetCounter);
+    ++packetCounter;
+    printf("Packet counter: %d\n", packetCounter);
 
-	if (packetCounter == totalPackets) {
+    if (packetCounter == totalPackets) {
 
-	for(int i = 0; i < 10; ++i){
-		sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
-	}
+       for(int i = 0; i < 10; ++i){
+      	 sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+       }
 
 	fclose(fd);
 	printf("Exiting program\n");
@@ -147,19 +146,18 @@ void recvFile(){
         packet tempPacket;
         int len = sizeof(serveraddr);
         int err = recvfrom(sockfd, &tempPacket, sizeof(tempPacket), 0, (struct sockaddr*)&serveraddr, (socklen_t *) &len);
-
+       
         if(err != -1) {
 
             // check if in order
             if (tempPacket.seqNum == windowQueue.front()) {
-                // check if MD5 hash matches
-		//if (checksum(tempPacket)){	
+	      if(checksum(tempPacket)){
 		int write;
-        	if ((totalBytes - bytesWritten) >= 1000) {
-        	    write = 1000;
-        	} else {
-            	write = totalBytes - bytesWritten;
-       		 }	
+        	  if ((totalBytes - bytesWritten) >= 1000) {
+        	      write = 1000;
+        	  } else {
+		    write = totalBytes - bytesWritten;
+       		  }	
         	printf("Packet recieved %d\n", tempPacket.seqNum);
         	fwrite(tempPacket.data, 1, write, fd);
         	bytesWritten += write;
@@ -170,7 +168,9 @@ void recvFile(){
 
         	// check if any in out of order queue is next seq
         	checkOutOfOrder();
-		//}
+	      } else {
+		sendAck(-3);
+	      }
 
             } else {
 				printf("Sent Out Of Order Ack: %d\n", tempPacket.seqNum);
