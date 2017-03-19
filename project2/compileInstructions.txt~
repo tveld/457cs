@@ -1,0 +1,3 @@
+this is the compile command to compile the cpp code 
+
+g++ -std=c++11 server.cpp -o server

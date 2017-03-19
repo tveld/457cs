@@ -6,10 +6,15 @@
 
 #include <iostream>
 #include <queue>
+#include <map>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sstream>
+#include <iomanip>
+#include <inttypes.h>
+#include <openssl/md5.h>
 
 using namespace std;
 
@@ -31,17 +36,41 @@ struct sockaddr_in serveraddr;
 struct packet {
     int seqNum; //the sequence number of the packet
     char data[1000]; // the data portion of the packet
+    char md5[40];
 };
 
 queue<int> windowQueue;
-queue<packet> outOfOrder;
+map<int, packet> outOfOrder;
 
 int nextSeq(){
-    seqNum = (seqNum % 9) + 1;
+    seqNum = (seqNum % 10) + 1;
     return seqNum;
 }
 
-void fillWindow(){
+bool checksum(packet Packet){
+    
+    unsigned char digest[16];
+    const char* string = Packet.data;
+    bool check;
+    char mdString[40]; 
+ 
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, string, strlen(string));
+    MD5_Final(digest, &ctx);
+    
+    for (int i = 0; i < 16; i++)
+        sprintf(&mdString[i*2], "%02x", (unsigned int)digest[i]);
+    strcpy(Packet.md5, mdString);
+    if (strcmp(mdString, Packet.md5) == 0){
+	check = true;
+    } else {
+	check = false;
+    }
+    return check;
+}
+
+void fillWindow(){  
     while(windowQueue.size() < 5){
         windowQueue.push(nextSeq());
     }
@@ -52,76 +81,113 @@ void sendAck(int seqNum){
     printf("Sent Packet Ack: %d\n", seqNum);
     int sendSeq = htonl(seqNum);
     sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+    ++packetCounter;
+    printf("Packet counter: %d\n", packetCounter);
+
+    if (packetCounter == totalPackets) {
+
+       for(int i = 0; i < 10; ++i){
+      	 sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+       }
+
+	fclose(fd);
+	printf("Exiting program\n");
+	receiving = false;
+
+	exit(0); //exit program
+    }
 }
 
-void checkOutOfOrder(){
-    int len = outOfOrder.size();
-    while(len > 0){
-        // check if in front
-        if(outOfOrder.front().seqNum == windowQueue.front()){
-            int write;
-            if ((totalBytes - bytesWritten) >= 1000) {
-                write = 1000;
-            } else {
-                write = totalBytes - bytesWritten;
-            }
-            printf("Packet recieved %d\n", outOfOrder.front().seqNum);
-            fwrite(outOfOrder.front().data, 1, write, fd);
+bool inWindow(int seqNum){
+	bool returnVal = false;
+	int size = windowQueue.size();
+	for(int i = 0; i < size; ++i){
+		if(seqNum == windowQueue.front()){
+			returnVal = true;
+		}
+		windowQueue.push((int &&) windowQueue.front());
+		windowQueue.pop();
+	}
 
-            sendAck(outOfOrder.front().seqNum);
+	return returnVal;
+}
 
-            bytesWritten += write;
-            ++packetCounter;
-            outOfOrder.pop();
-            windowQueue.pop();
 
-            len = 0;
-            checkOutOfOrder();
+void checkOutOfOrder() {
+    // check if front element is key in map
+    if (outOfOrder.count(windowQueue.front()) == 1) {
+        int write;
+        if ((totalBytes - bytesWritten) >= 1000) {
+            write = 1000;
         } else {
-            // move packet to the back of queue
-            outOfOrder.push((packet &&) outOfOrder.front());
-            outOfOrder.pop();
+            write = totalBytes - bytesWritten;
         }
-        len--;
+
+        bytesWritten += write;
+
+        printf("Out of order packet recieved %d\n", outOfOrder.at( windowQueue.front()).seqNum);
+        fwrite(outOfOrder.at(windowQueue.front()).data, 1, write, fd);
+
+        sendAck(windowQueue.front());
+        outOfOrder.erase(windowQueue.front());
+        windowQueue.pop();
+
+        fillWindow();
+
+        checkOutOfOrder();
     }
 }
 
 void recvFile(){
+
     receiving = true;
     while(receiving){
-        packet tempPacket;
 
+        packet tempPacket;
         int len = sizeof(serveraddr);
         int err = recvfrom(sockfd, &tempPacket, sizeof(tempPacket), 0, (struct sockaddr*)&serveraddr, (socklen_t *) &len);
-
+       
         if(err != -1) {
 
             // check if in order
             if (tempPacket.seqNum == windowQueue.front()) {
-                int write;
-                if ((totalBytes - bytesWritten) >= 1000) {
-                    write = 1000;
-                } else {
-                    write = totalBytes - bytesWritten;
-                }
-                printf("Packet recieved %d\n", tempPacket.seqNum);
-                fwrite(tempPacket.data, 1, write, fd);
+	      if(checksum(tempPacket)){
+		int write;
+        	  if ((totalBytes - bytesWritten) >= 1000) {
+        	      write = 1000;
+        	  } else {
+		    write = totalBytes - bytesWritten;
+       		  }	
+        	printf("Packet recieved %d\n", tempPacket.seqNum);
+        	fwrite(tempPacket.data, 1, write, fd);
+        	bytesWritten += write;
+        	sendAck(tempPacket.seqNum);
 
-                bytesWritten += write;
-                sendAck(tempPacket.seqNum);
-                ++packetCounter;
+        	windowQueue.pop();
+       		fillWindow();
 
-                // check if any in out of order queue is next seq
-                checkOutOfOrder();
+        	// check if any in out of order queue is next seq
+        	checkOutOfOrder();
+	      } else {
+		sendAck(-3);
+	      }
 
-                if (packetCounter == totalPackets) {
-                    fclose(fd);
-                    printf("Exiting program\n");
-                    receiving = false;
-                }
             } else {
-                // store in queue of out of order packets
-                outOfOrder.push(tempPacket);
+				printf("Sent Out Of Order Ack: %d\n", tempPacket.seqNum);
+    				int sendSeq = htonl(tempPacket.seqNum);
+    				sendto(sockfd, &sendSeq, sizeof(sendSeq), 0, (struct sockaddr*)&serveraddr, sizeof(serveraddr));
+               
+				if(inWindow(tempPacket.seqNum)){
+					printf("Out of order packet: %d\n", tempPacket.seqNum);
+                			// store in map
+					if (outOfOrder.count(tempPacket.seqNum) == 1) {
+						outOfOrder.erase(tempPacket.seqNum);
+						outOfOrder[tempPacket.seqNum] = tempPacket;
+						    } else {
+						outOfOrder[tempPacket.seqNum] = tempPacket;
+					}
+				}
+				
             }
         }
     }
@@ -181,8 +247,11 @@ int main() {
     // recieve file size
     int size = 0;
     int len = sizeof(serveraddr);
+    
     recvfrom(sockfd, &size, sizeof(size), 0, (struct sockaddr*)&serveraddr, (socklen_t *) &len);
     totalBytes = ntohl(size);
+    
+	printf("Total bytes: %d\n", totalBytes);
 
     //calculate total number of packets we need recieved
     totalPackets = totalBytes / 1000;
@@ -191,10 +260,17 @@ int main() {
         ++totalPackets;
     }
 
+	printf("Total packets: %d\n", totalPackets);
+
     // make new file
     fd = fopen(nname, "w");
 
+    // pre fill window with expected packet
+    fillWindow();
+
+    // recieve the file
     recvFile();
+
     printf("Bytes written: %d\n", bytesWritten);
     return 0;
 }

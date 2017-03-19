@@ -1,0 +1,8 @@
+//host h1
+tc qdisc add dev h1-eth0 root netem loss 10% delay 150ms reorder 10% duplicate 10%
+
+//host h2
+tc qdisc add dev h2-eth0 root netem loss 10% delay 150ms reorder 10% duplicate 10%
+
+// if already added, use tc qdisc change dev ...
+
