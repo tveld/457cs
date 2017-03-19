@@ -1,0 +1,28 @@
+Configuration Instructions (for use in labs):
+
+launch vm: startmininet
+user: mininet
+pass: mininet
+
+get ip of vm: ifconfig
+(look in eth0, inet addr)
+
+ctrl-alt to get mouse control and minimize window
+
+in new terminal, run: ssh -Y mininet@[your vm ip]
+pass: mininet
+
+add router code provided:
+vim prj3-net.py
+(paste in code)
+chmod 700 prj3-net.py
+
+sudo ./prj3-net.py
+
+xterm h1
+or
+xterm h2
+...
+
+
+
