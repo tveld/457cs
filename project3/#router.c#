@@ -119,7 +119,7 @@ int main(){
 	unsigned char        src_hardware_addr[6];
 	unsigned char        src_protocol_addr[4];
 	unsigned char        dest_hardware_addr[6];
-	unsigned char        dest_hardware_addr[4];
+	unsigned char        dest_protocol_addr[4];
     }
 
       struct arpheader arp;
