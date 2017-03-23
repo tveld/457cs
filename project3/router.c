@@ -7,6 +7,8 @@
 #include <netinet/if_ether.h>
 #include <netinet/ether.h>
 
+
+
 int main(){
   int packet_socket;
   //get list of interfaces (actually addresses)
@@ -76,6 +78,7 @@ int main(){
     //start processing all others
     printf("Got a %d byte packet\n", n);
     
+    // extract Ethernet information
     char* tempEth;
     unsigned short tempType;
     struct ether_header *eth = (struct ether_header*)buf;
@@ -86,6 +89,29 @@ int main(){
     printf("Type: %04hx\n", ntohs(eth->ether_type));
     int size = sizeof(eth->ether_dhost)+sizeof(eth->ether_shost)+sizeof(eth->ether_type);
     printf("Size of Eth header: %d\n", size);	
+
+      struct arpheader {
+      unsigned short int   hardware_type;
+      unsigned short int   protocol_type;
+      unsigned char        hardware_addr_length;
+      unsigned char        protocol_addr_length;
+      unsigned short int   op;
+      unsigned char        src_hardware_addr[6];
+      unsigned char        src_protocol_addr[4];
+      unsigned char        target_hardware_addr[6];
+      unsigned char        target_hardware_addr[4];
+    }
+
+      struct arpheader arp;
+      memcpy(&arp, &buf[sizeof(struct ether_header)], sizeof(struct arpheader));
+      printf("Type of operation: %d\n", ntohs(arp.op));
+    
+    // find that packet is for us
+    // create respond arp packet
+    // send response
+  
+
+
     //what else to do is up to you, you can send packets with send,
     //just like we used for TCP sockets (or you can use sendto, but it
     //is not necessary, since the headers, including all addresses,
