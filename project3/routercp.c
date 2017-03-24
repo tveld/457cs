@@ -1,6 +1,7 @@
 #include <netpacket/packet.h> 
 #include <net/ethernet.h>
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
@@ -129,19 +130,19 @@ int main(){
     memcpy(&arp, &buf[sizeof(struct ether_header)], sizeof(struct arpheader));
      
     printf("SENDER MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-      arp->sha[0],
-      arp->sha[1],
-      arp->sha[2],
-      arp->sha[3],
-      arp->sha[4],
-      arp->sha[5]
+      arp.sha[0],
+      arp.sha[1],
+      arp.sha[2],
+      arp.sha[3],
+      arp.sha[4],
+      arp.sha[5]
     );
     
     printf("SENDER IP address: %02d:%02d:%02d:%02d\n",
-      ah->arp_spa[0],
-      ah->arp_spa[1],
-      ah->arp_spa[2],
-      ah->arp_spa[3]
+      arp.spa[0],
+      arp.spa[1],
+      arp.spa[2],
+      arp.spa[3]
     ); 
 
     unsigned char routerMac[6];
@@ -155,8 +156,8 @@ int main(){
 
     // setup responce packet
     arp.op=(htons(2));
-    memcpy(arp.dest_hardware_addr, arp.src_hardware_addr, 6);
-    memcpy(arp.src_hardware_addr, routerMac, 6);
+    memcpy(arp.dha, arp.sha, 6);
+    memcpy(arp.sha, routerMac, 6);
 
 
     // add to buffer
@@ -165,7 +166,7 @@ int main(){
     memcpy(rpacket, &eth, sizeof(&eth));
     memcpy(rpacket + sizeof(&eth), &arp, sizeof(&arp));
 
-    printf("Size of eth + arp is: %d\n", sizeof(rpacket));
+    printf("Size of eth + arp is: %lu\n", sizeof(rpacket));
       // target is source comp
       /*
       arp.op=(htons(2));
