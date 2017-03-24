@@ -6,7 +6,7 @@
 #include <ifaddrs.h>
 #include <netinet/if_ether.h>
 #include <netinet/ether.h>
-
+#include <string.h>
 /*
 char *getmac(char *iface)
 {
@@ -33,7 +33,7 @@ char *getmac(char *iface)
 
 int main(){
   int packet_socket;
-  unsigned char ifmacaddr[6];
+  unsigned char* ifmacaddr;
   //get list of interfaces (actually addresses)
   struct ifaddrs *ifaddr, *tmp;
   if(getifaddrs(&ifaddr)==-1){
@@ -51,7 +51,6 @@ int main(){
       //create a packet socket on interface r?-eth1
       if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
 	printf("Creating Socket on interface %s\n",tmp->ifa_name);
-	printf("Address: %s", ether_ntoa((struct ether_addr*)tmp->ifa_addr));
 
 	//create a packet socket
 	//AF_PACKET makes it a packet socket
@@ -72,7 +71,10 @@ int main(){
 	//we could convert to sockaddr_ll if we needed to)
 	if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
 	  perror("bind");
-	} 
+	}
+
+	struct sockaddr_ll *macsoc  = (struct sockaddr_ll *) tmp->ifa_addr;
+	ifmacaddr = (unsigned char *) macsoc->sll_addr; 
       }
     }
   }
