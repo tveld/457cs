@@ -109,7 +109,6 @@ int main(){
     unsigned short tempType;
     struct ether_header *eth = (struct ether_header*)buf;
     
-	/*
     tempEth=ether_ntoa((struct ether_addr*) &eth->ether_dhost);
     printf("Destination address: %s\n", tempEth);
     tempEth=ether_ntoa((struct ether_addr*) &eth->ether_shost);
@@ -117,7 +116,7 @@ int main(){
     printf("Type: %04hx\n", ntohs(eth->ether_type));
     int size = sizeof(eth->ether_dhost)+sizeof(eth->ether_shost)+sizeof(eth->ether_type);
     printf("Size of Eth header: %d\n", size);	
-	*/
+
     struct arpheader {
     	unsigned short int   hardware_type;
     	unsigned short int   protocol_type;
@@ -175,18 +174,29 @@ int main(){
     memcpy(arp.spa, tmpaddr, 4);
     
     // ether
-    u_char temp[6];
+
+    //memcpy(eth->ether_dhost, recvaddr.sll_addr, 6);
+
+    memcpy(eth->ether_dhost, eth->ether_shost, 6);
+
     memcpy(eth->ether_shost, ifmacaddr, 6);
-    memcpy(eth->ether_dhost, recvaddr.sll_addr, 6);
-
-
     // add to buffer
-    char rpacket[42];
 
-    memcpy(rpacket, &eth, sizeof(&eth));
-    memcpy(rpacket + sizeof(&eth), &arp, sizeof(&arp));
+    printf("ether saddr: %02X:%02X:%02X:%02X:%02X:%02X",
+	eth->ether_shost[0], eth->ether_shost[1], eth->ether_shost[2],
+	eth->ether_shost[3], eth->ether_shost[4], eth->ether_shost[5]);
 
-    printf("Size of eth + arp is: %d\n", (int) sizeof(rpacket));
+    
+    printf("ether daddr: %02X:%02X:%02X:%02X:%02X:%02X",
+	eth->ether_dhost[0], eth->ether_dhost[1], eth->ether_dhost[2],
+	eth->ether_dhost[3], eth->ether_dhost[4], eth->ether_dhost[5]);
+    
+
+    char responce[42];
+    memcpy(responce, &eth, 14);
+    memcpy(&responce[14], &arp, 28);
+
+    printf("Size of eth + arp is: %d\n", (int) sizeof(responce));
       // target is source comp
       /*
       arp.op=(htons(2));
@@ -199,7 +209,7 @@ int main(){
     // create respond arp packet
     // send response
   
-    int b = send(packet_socket, rpacket, 42, 0);
+    int b = send(packet_socket, responce, 42, 0);
 
     printf("%d bytes sent back", b);
 
