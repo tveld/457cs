@@ -162,9 +162,22 @@ int main(){
       ifmacaddr[5]
     );
     // setup responce packet
+    
+    //arp
     arp.op=(htons(2));
     memcpy(arp.dha, arp.sha, 6);
     memcpy(arp.sha, ifmacaddr, 6);
+    
+    // protocal addrs
+    unsigned char* tmpaddr[4];
+    memcpy(tmpaddr, arp.dpa, 4);
+    memcpy(arp.dpa, arp.spa, 4);
+    memcpy(arp.spa, tmpaddr, 4);
+    
+    // ether
+    u_char temp[6];
+    memcpy(eth->ether_shost, ifmacaddr, 6);
+    memcpy(eth->ether_dhost, recvaddr.sll_addr, 6);
 
 
     // add to buffer
@@ -186,6 +199,9 @@ int main(){
     // create respond arp packet
     // send response
   
+    int b = send(packet_socket, rpacket, 42, 0);
+
+    printf("%d bytes sent back", b);
 
 
     //what else to do is up to you, you can send packets with send,
