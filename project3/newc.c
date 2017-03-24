@@ -79,7 +79,7 @@ int main(){
     }
   }
   //free the interface list when we don't need it anymore
-  freeifaddrs(ifaddr);
+  //freeifaddrs(ifaddr);
 
   //loop and recieve packets. We are only looking at one interface,
   //for the project you will probably want to look at more (to do so,
@@ -168,7 +168,7 @@ int main(){
     memcpy(arp.sha, ifmacaddr, 6);
     
     // protocal addrs
-    unsigned char* tmpaddr[4];
+    unsigned char tmpaddr[4];
     memcpy(tmpaddr, arp.dpa, 4);
     memcpy(arp.dpa, arp.spa, 4);
     memcpy(arp.spa, tmpaddr, 4);
@@ -193,7 +193,7 @@ int main(){
     
 
     char responce[42];
-    memcpy(responce, &eth, 14);
+    memcpy(responce, eth, 14);
     memcpy(&responce[14], &arp, 28);
 
     printf("Size of eth + arp is: %d\n", (int) sizeof(responce));
