@@ -9,6 +9,9 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <cstdlib> 
+#include <linux/ip.h>
+
+
 struct arpheader {
 	unsigned short int   hardware_type;
 	unsigned short int   protocol_type;
@@ -193,11 +196,23 @@ int main(){
 		} else {
 			printf("I've got an ICMP packet");
 			
-			struct ether_header *eth = (struct ether_header*) buf;
-			struct iphdr *ip = (struct iphdr*)(buf + sizeof(struct ether_header*));
-			struct icmphdr * icmp= (struct icmphdr*)(buf + 
-				sizeof(struct ether_header*) + sizeof(struct iphdr*));	
+			struct ether_header *eth_1;
+			struct iphdr *ip_1;
+			struct icmphdr *icmp_1;
 
+			memcpy(&eth_1, &buf, sizeof(struct ether_header*));
+
+			memcpy(&ip_1, &buf[sizeof(eth_1)], sizeof(struct iphdr*));
+
+			memcpy(&icmp_1, &buf[sizeof(ip_1)], sizeof(struct icmphdr*));
+
+			memcpy(eth_1->ether_dhost, eth_1->ether_shost, 6);
+			memcpy(eth_1->ether_shost, ifeth1addr, 6);
+
+			memcpy(ip_1->daddr,ip_1->saddr, 4);
+
+			
+			
 		}
 		//what else to do is up to you, you can send packets with send,
 		//just like we used for TCP sockets (or you can use sendto, but it
