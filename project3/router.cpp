@@ -234,16 +234,16 @@ int main(){
 			int check_size = buffer_size - ether_ip_size;
 			int data_size = check_size - icmp_size;
 
-			int 16_bit_wc = check_size / 2;
+			int check_16bit_wc = check_size / 2;
 
-			char checksum[check_size];
+			unsigned short checksum[check_size];
 
 			icmp_1.type = 0;
 			icmp_1.checksum = 0;
 
 			memcpy(&checksum, &icmp_1, icmp_size);
 			memcpy(&checksum[icmp_size], &buf[buffer_size - data_size], data_size); 
-			icmp_1.checksum = cksum(checksum, 16_bit_wc);
+			icmp_1.checksum = cksum(checksum, check_16bit_wc);
 
 			char resp[100];
 			memcpy(&resp, &eth_1, sizeof(struct ether_header));
