@@ -185,16 +185,18 @@ int main(){
 			printf("%d bytes sent back\n==========================\n", b);
 		} else {
 			printf("I've got an ICMP packet");
+			
 			struct iphdr *ip;
 			struct icmphdr *icmp;
 			char *packet, *buffer;
-
-			packet = malloc(sizeof(struct iphdr) + sizeof(struct icmphdr));
-			buffer = malloc(sizeof(struct iphdr) + sizeof(struct icmphdr));
+			
+			packet = malloc(sizeof(ip) + sizeof(icmp));
+			
+			buffer = malloc(sizeof(ip) + sizeof(icmp));
 			ip = (struct iphdr*) packet;
-			icmp = (struct icmphdr*) (packet + sizeof(struct iphdr));
+			icmp = (struct icmphdr*) (packet + sizeof(ip));
 
-			icmp->type = 0;
+			icmp->type = htons(0);
 		}
 
 		//what else to do is up to you, you can send packets with send,

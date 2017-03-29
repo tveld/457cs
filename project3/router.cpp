@@ -7,8 +7,8 @@
 #include <netinet/if_ether.h>
 #include <netinet/ether.h>
 #include <string.h>
-
-
+#include <netinet/in.h>
+#include <cstdlib> 
 struct arpheader {
 	unsigned short int   hardware_type;
 	unsigned short int   protocol_type;
@@ -23,7 +23,7 @@ struct arpheader {
 
 int main(){  
 	int packet_socket;
-	unsigned char* ifmacaddr;
+	unsigned char* ifeth1addr;
 	//get list of interfaces (actually addresses)
 	struct ifaddrs *ifaddr, *tmp;
 
@@ -83,7 +83,7 @@ int main(){
 	while(1){
 		char buf[1500];
 		struct sockaddr_ll recvaddr;
-		int recvaddrlen=sizeof(struct sockaddr_ll);
+		socklen_t recvaddrlen=sizeof(struct sockaddr_ll);
 		//we can use recv, since the addresses are in the packet, but we
 		//use recvfrom because it gives us an easy way to determine if
 		//this packet is incoming or outgoing (when using ETH_P_ALL, we
@@ -141,19 +141,19 @@ int main(){
 
 
 			printf("Router MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-				ifmacaddr[0],
-				ifmacaddr[1],
-				ifmacaddr[2],
-				ifmacaddr[3],
-				ifmacaddr[4],
-				ifmacaddr[5]
+				ifeth1addr[0],
+				ifeth1addr[1],
+				ifeth1addr[2],
+				ifeth1addr[3],
+				ifeth1addr[4],
+				ifeth1addr[5]
 			);
 			// setup responce packet
 
 			//arp
 			arp.op=(htons(2));
 			memcpy(arp.dha, arp.sha, 6);
-			memcpy(arp.sha, ifmacaddr, 6);
+			memcpy(arp.sha, ifeth1addr, 6);
 
 			// protocal addrs
 			unsigned char tmpaddr[4];
@@ -167,7 +167,7 @@ int main(){
 
 			memcpy(eth->ether_dhost, eth->ether_shost, 6);
 
-			memcpy(eth->ether_shost, ifmacaddr, 6);
+			memcpy(eth->ether_shost, ifeth1addr, 6);
 			// add to buffer
 
 			printf("ether saddr: %02X:%02X:%02X:%02X:%02X:%02X\n",
@@ -189,20 +189,16 @@ int main(){
 			int b = send(packet_socket, responce, 42, 0);
 
 			printf("%d bytes sent back\n==========================\n", b);
+			
 		} else {
 			printf("I've got an ICMP packet");
-			struct iphdr *ip;
-			struct icmphdr *icmp;
-			char *packet, *buffer;
+			
+			struct ether_header *eth = (struct ether_header*) buf;
+			struct iphdr *ip = (struct iphdr*)(buf + sizeof(struct ether_header*));
+			struct icmphdr * icmp= (struct icmphdr*)(buf + 
+				sizeof(struct ether_header*) + sizeof(struct iphdr*));	
 
-			packet = malloc(sizeof(struct iphdr) + sizeof(struct icmphdr));
-			buffer = malloc(sizeof(struct iphdr) + sizeof(struct icmphdr));
-			ip = (struct iphdr*) packet;
-			icmp = (struct icmphdr*) (packet + sizeof(struct iphdr));
-
-			icmp->type = 0;
 		}
-
 		//what else to do is up to you, you can send packets with send,
 		//just like we used for TCP sockets (or you can use sendto, but it
 		//is not necessary, since the headers, including all addresses,
