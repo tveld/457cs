@@ -24,6 +24,21 @@ struct arpheader {
 	unsigned char        dpa[4];
 };
 
+unsigned short cksum(unsigned short *buf, int count) {
+	register u_long sum = 0;
+ 	while (count--){
+		sum += *buf++;
+		if (sum & 0xFFFF0000){
+			/* carry occurred,
+			 * so wrap around */
+			sum &= 0xFFFF;
+			sum++;
+		}
+	}
+	return ~(sum & 0xFFFF);
+}
+
+
 int main(){  
 	int packet_socket;
 	unsigned char* ifeth1addr;
@@ -213,7 +228,22 @@ int main(){
 			ip_1.daddr = ip_1.saddr;
 			ip_1.saddr = temp;
 			
+			int buffer_size = sizeof(buf);
+			int icmp_size = sizeof(struct icmphdr);	
+			int ether_ip_size = sizeof(struct ether_header) + sizeof(struct iphdr);
+			int check_size = buffer_size - ether_ip_size;
+			int data_size = check_size - icmp_size;
+
+			int 16_bit_wc = check_size / 2;
+
+			char checksum[check_size];
+
 			icmp_1.type = 0;
+			icmp_1.checksum = 0;
+
+			memcpy(&checksum, &icmp_1, icmp_size);
+			memcpy(&checksum[icmp_size], &buf[buffer_size - data_size], data_size); 
+			icmp_1.checksum = cksum(checksum, 16_bit_wc);
 
 			char resp[100];
 			memcpy(&resp, &eth_1, sizeof(struct ether_header));
@@ -223,7 +253,7 @@ int main(){
 			int c = send(packet_socket, resp, 42, 0);
 			printf("Bytes sent: %d\n", c);	
 
-
+			
 
 	}
 		//what else to do is up to you, you can send packets with send,
