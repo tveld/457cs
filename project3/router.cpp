@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <cstdlib> 
 #include <linux/ip.h>
-
+#include <linux/icmp.h>
 
 struct arpheader {
 	unsigned short int   hardware_type;
@@ -200,19 +200,25 @@ int main(){
 			struct iphdr *ip_1;
 			struct icmphdr *icmp_1;
 
-			memcpy(&eth_1, &buf, sizeof(struct ether_header*));
+			memcpy(eth_1, &buf, sizeof(struct ether_header));
 
-			memcpy(&ip_1, &buf[sizeof(eth_1)], sizeof(struct iphdr*));
+			memcpy(ip_1, &buf[sizeof(struct ether_header)], sizeof(struct iphdr));
 
-			memcpy(&icmp_1, &buf[sizeof(ip_1)], sizeof(struct icmphdr*));
+			memcpy(icmp_1, &buf[sizeof(struct ether_header) + sizeof(struct iphdr)], sizeof(struct icmphdr));
 
 			memcpy(eth_1->ether_dhost, eth_1->ether_shost, 6);
 			memcpy(eth_1->ether_shost, ifeth1addr, 6);
-
-			memcpy(ip_1->daddr,ip_1->saddr, 4);
-
 			
+			uint32_t temp = ip_1->daddr;
+			ip_1->daddr = ip_1->saddr;
+			ip_1->saddr = temp;
 			
+			icmp_1->type = 0;
+
+			char resp[100];
+			memcpy(resp, eth_1, sizeof(struct ether_header));
+			memcpy(resp, eth_1, sizeof(struct ether_header));
+			memcpy(resp, eth_1, sizeof(struct ether_header));
 		}
 		//what else to do is up to you, you can send packets with send,
 		//just like we used for TCP sockets (or you can use sendto, but it
