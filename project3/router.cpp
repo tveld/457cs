@@ -11,6 +11,13 @@
 #include <cstdlib> 
 #include <linux/ip.h>
 #include <linux/icmp.h>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <iostream>
+#include <unordered_map>
+
+using namespace std;
 
 struct arpheader {
 	unsigned short int   hardware_type;
@@ -44,8 +51,9 @@ int main(){
 	unsigned char* ifeth1addr;
 	//get list of interfaces (actually addresses)
 	struct ifaddrs *ifaddr, *tmp;
-
-	
+	//hash map to hold table info
+	unordered_map<string, pair<string, string>> rmap;
+ 	
 	if(getifaddrs(&ifaddr)==-1){
 		perror("getifaddrs");
 		return 1;
@@ -82,9 +90,38 @@ int main(){
 				if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
 					perror("bind");
 				}
-
+				
 				struct sockaddr_ll *eth1  = (struct sockaddr_ll *) tmp->ifa_addr;
 				ifeth1addr = (unsigned char *) eth1->sll_addr; 
+
+				// read in router
+				if(!strncmp(&(tmp->ifa_name[0]),"r1", 2)){
+					printf("\tRouter Table 1\n");
+					ifstream rtable("r1-table.txt");
+					string line;
+					string src, pre, dest, iface;
+					while(getline(rtable, line)){
+						stringstream ss(line);
+							
+						while(ss >> src){
+								ss >> dest;
+								ss >> iface;
+								pre = src.substr(0,8);	
+								rmap[pre].first = dest;
+								rmap[pre].second = iface;
+						
+								printf("Prefix: %s\n", pre.c_str());
+								printf("Dest: %s\n", rmap[pre].first.c_str());
+								printf("Iface: %s\n", rmap[pre].second.c_str());
+
+						}
+						//printf("%s \n", line.c_str());
+					}
+				} else if(!strncmp(&(tmp->ifa_name[0]), "r2", 2)){
+					printf("On router 2\n");
+				} else {
+					printf("You are not on a mininet router! Could not open routing table.\n");
+				}
 			}
 		}
 	}
