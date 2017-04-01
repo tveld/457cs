@@ -16,6 +16,7 @@
 #include <sstream>
 #include <iostream>
 #include <unordered_map>
+#include <arpa/inet.h>
 
 using namespace std;
 
@@ -46,7 +47,12 @@ unsigned short cksum(unsigned short *buf, int count) {
 }
 
 
-void send_arp_reply(struct arpheader arp, int packet_socket, char *buf){
+void send_arp_reply(
+	unsigned char* ifeth1addr, 
+	struct ether_header *eth, 
+	struct arpheader arp, 
+	int packet_socket, 
+	char *buf){
 	
 	// setup responce packet
 
@@ -90,14 +96,13 @@ void send_arp_reply(struct arpheader arp, int packet_socket, char *buf){
 
 	printf("%d bytes sent back\n==========================\n", b);
 
-
-
-
 }
 
 int main(){  
 	int packet_socket;
 	unsigned char* ifeth1addr;
+	unsigned char* ifip1addr;
+
 	//get list of interfaces (actually addresses)
 	struct ifaddrs *ifaddr, *tmp;
 	//hash map to hold table info
@@ -115,6 +120,15 @@ int main(){
 		//about those for the purpose of enumerating interfaces. We can
 		//use the AF_INET addresses in this list for example to get a list
 		//of our own IP addresses
+		
+		// get IP addresses
+		if(tmp->ifa_addr->sa_family==AF_INET){
+			if(!strncmp(&(tmp->ifa_name[3]), "eth1",4)){
+				struct sockaddr_in *ip1 = (struct sockaddr_in*) tmp->ifa_addr;
+				ifip1addr = (unsigned char *) &(ip1->sin_addr.s_addr);
+			}
+		}
+
 		if(tmp->ifa_addr->sa_family==AF_PACKET){
 			//create a packet socket on interface r?-eth1
 			if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
@@ -240,6 +254,14 @@ int main(){
 				arp.spa[3]
 			); 
 
+	
+			printf("Destination IP address: %02d:%02d:%02d:%02d\n",
+				arp.dpa[0],
+				arp.dpa[1],
+				arp.dpa[2],
+				arp.dpa[3]
+			); 
+
 			unsigned char routerMac[6];
 
 
@@ -251,16 +273,32 @@ int main(){
 				ifeth1addr[4],
 				ifeth1addr[5]
 			);
-			
+
+			printf("Router IP address: %02d:%02d:%02d:%02d\n",
+				ifip1addr[0],
+				ifip1addr[1],
+				ifip1addr[2],
+				ifip1addr[3]
+			);
+	
 			// if arp reply
-			if(ntohs(arp.oper) == "2"){
+			if(ntohs(arp.op) == 2){
 				printf("I've got an ARP reply\n");
 
 
 				// arp request
-			} else if(ntohs(arp.oper) == "1"){
+			} else if(ntohs(arp.op) == 1){
 				printf("I've got an ARP request\n");
-
+				
+				// arp request is for me
+				if(arp.dpa[0] == ifip1addr[0] &&
+					 arp.dpa[1] == ifip1addr[1] &&
+					 arp.dpa[2] == ifip1addr[2] &&
+					 arp.dpa[3] == ifip1addr[3]){
+ 
+					printf("Sending reply for arp header\n");
+					send_arp_reply(ifeth1addr, eth, arp, packet_socket, buf);
+				}
 			}
 			
 			// ICMP packet
