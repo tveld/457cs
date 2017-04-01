@@ -45,7 +45,7 @@ int main(){
 	//get list of interfaces (actually addresses)
 	struct ifaddrs *ifaddr, *tmp;
 
-
+	
 	if(getifaddrs(&ifaddr)==-1){
 		perror("getifaddrs");
 		return 1;
