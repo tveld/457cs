@@ -160,7 +160,7 @@ int main(){
 		struct ether_header *eth = (struct ether_header*)buf;
 
 
-		//
+		//if arp
 		if(ntohs(eth->ether_type)==0x0806){ 
 			/*
 			tempEth=ether_ntoa((struct ether_addr*) &eth->ether_dhost);
