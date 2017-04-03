@@ -48,7 +48,7 @@ unsigned short cksum(unsigned short *buf, int count) {
 
 
 void send_arp_reply(
-	unsigned char* ifeth1addr, 
+	unsigned char* ifethaddr, 
 	struct ether_header *eth, 
 	struct arpheader arp, 
 	int packet_socket, 
@@ -59,7 +59,7 @@ void send_arp_reply(
 	//arp
 	arp.op=(htons(2));
 	memcpy(arp.dha, arp.sha, 6);
-	memcpy(arp.sha, ifeth1addr, 6);
+	memcpy(arp.sha, ifethaddr, 6);
 
 	// protocal addrs
 	unsigned char tmpaddr[4];
@@ -73,7 +73,7 @@ void send_arp_reply(
 
 	memcpy(eth->ether_dhost, eth->ether_shost, 6);
 
-	memcpy(eth->ether_shost, ifeth1addr, 6);
+	memcpy(eth->ether_shost, ifethaddr, 6);
 	// add to buffer
 
 	printf("ether saddr: %02X:%02X:%02X:%02X:%02X:%02X\n",
@@ -100,14 +100,23 @@ void send_arp_reply(
 
 int main(){  
 	int packet_socket;
-	unsigned char* ifeth1addr;
-	unsigned char* ifip1addr;
+	unsigned char* ifethaddr;
+	unsigned char* ifipaddr;
+	string iname;
 
-	//get list of interfaces (actually addresses)
+	// get list of interfaces (actually addresses)
 	struct ifaddrs *ifaddr, *tmp;
-	//hash map to hold table info
+	// hash map to hold table info
+	// key: prefix   first: next hop   second: interface name
 	unordered_map<string, pair<string, string>> rmap;
- 	
+	
+	// hash map to hold interface info
+	// key: interface name first:socket second: mac third: ip
+	unordered_map<string, tuple<int, unsigned char *, unsigned char *>> imap;
+
+	// hash map to hold packets waiting to be send
+	// WIP
+
 	if(getifaddrs(&ifaddr)==-1){
 		perror("getifaddrs");
 		return 1;
@@ -120,19 +129,22 @@ int main(){
 		//about those for the purpose of enumerating interfaces. We can
 		//use the AF_INET addresses in this list for example to get a list
 		//of our own IP addresses
+
+		// get interface name
+		iname = tmp->ifa_name;
 		
 		// get IP addresses
 		if(tmp->ifa_addr->sa_family==AF_INET){
 			if(!strncmp(&(tmp->ifa_name[3]), "eth1",4)){
-				struct sockaddr_in *ip1 = (struct sockaddr_in*) tmp->ifa_addr;
-				ifip1addr = (unsigned char *) &(ip1->sin_addr.s_addr);
+				struct sockaddr_in *ip = (struct sockaddr_in*) tmp->ifa_addr;
+				ifipaddr = (unsigned char *) &(ip->sin_addr.s_addr);
 			}
 		}
 
 		if(tmp->ifa_addr->sa_family==AF_PACKET){
 			//create a packet socket on interface r?-eth1
 			if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
-				printf("Creating Socket on interface %s\n",tmp->ifa_name);
+				//printf("Creating Socket on interface %s\n",tmp->ifa_name);
 				//create a packet socket
 				//AF_PACKET makes it a packet socket
 				//SOCK_RAW makes it so we get the entire packet
@@ -150,13 +162,23 @@ int main(){
 				//for "packet"), but of course bind takes a struct sockaddr.
 				//Here, we can use the sockaddr we got from getifaddrs (which
 				//we could convert to sockaddr_ll if we needed to)
+			
+			//if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
 				if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
 					perror("bind");
 				}
+			//}
 				
-				struct sockaddr_ll *eth1  = (struct sockaddr_ll *) tmp->ifa_addr;
-				ifeth1addr = (unsigned char *) eth1->sll_addr; 
+				// get mac address	
+				struct sockaddr_ll *eth  = (struct sockaddr_ll *) tmp->ifa_addr;
+				ifethaddr = (unsigned char *) eth->sll_addr; 
+				
 
+				// add into interface map
+				imap[iname] = make_tuple(packet_socket, ifethaddr, ifipaddr);
+				
+				printf("socket: %d\n", get<0>(imap[iname]));
+				
 				// read in router
 				if(!strncmp(&(tmp->ifa_name[0]),"r1", 2)){
 					printf("\tRouter Table 1\n");
@@ -169,7 +191,7 @@ int main(){
 						while(ss >> src){
 								ss >> dest;
 								ss >> iface;
-								pre = src.substr(0,8);	
+								pre = src.substr(0,7);	
 								rmap[pre].first = dest;
 								rmap[pre].second = iface;
 						
@@ -266,19 +288,19 @@ int main(){
 
 
 			printf("Router MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-				ifeth1addr[0],
-				ifeth1addr[1],
-				ifeth1addr[2],
-				ifeth1addr[3],
-				ifeth1addr[4],
-				ifeth1addr[5]
+				ifethaddr[0],
+				ifethaddr[1],
+				ifethaddr[2],
+				ifethaddr[3],
+				ifethaddr[4],
+				ifethaddr[5]
 			);
 
 			printf("Router IP address: %02d:%02d:%02d:%02d\n",
-				ifip1addr[0],
-				ifip1addr[1],
-				ifip1addr[2],
-				ifip1addr[3]
+				ifipaddr[0],
+				ifipaddr[1],
+				ifipaddr[2],
+				ifipaddr[3]
 			);
 	
 			// if arp reply
@@ -291,13 +313,13 @@ int main(){
 				printf("I've got an ARP request\n");
 				
 				// arp request is for me
-				if(arp.dpa[0] == ifip1addr[0] &&
-					 arp.dpa[1] == ifip1addr[1] &&
-					 arp.dpa[2] == ifip1addr[2] &&
-					 arp.dpa[3] == ifip1addr[3]){
+				if(arp.dpa[0] == ifipaddr[0] &&
+					 arp.dpa[1] == ifipaddr[1] &&
+					 arp.dpa[2] == ifipaddr[2] &&
+					 arp.dpa[3] == ifipaddr[3]){
  
 					printf("Sending reply for arp header\n");
-					send_arp_reply(ifeth1addr, eth, arp, packet_socket, buf);
+					send_arp_reply(ifethaddr, eth, arp, packet_socket, buf);
 				}
 			}
 			
@@ -316,7 +338,7 @@ int main(){
 			memcpy(&icmp_1, &buf[sizeof(struct ether_header) + sizeof(struct iphdr)], sizeof(struct icmphdr));
 
 			memcpy(eth_1.ether_dhost, eth_1.ether_shost, 6);
-			memcpy(eth_1.ether_shost, ifeth1addr, 6);
+			memcpy(eth_1.ether_shost, ifethaddr, 6);
 		
 			uint32_t temp = ip_1.daddr;
 			ip_1.daddr = ip_1.saddr;
