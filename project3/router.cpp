@@ -99,7 +99,7 @@ void send_arp_reply(
 }
 
 int main(){  
-	int packet_socket;
+	int packet_socket = 0;
 	struct sockaddr_ll *eth;
 	unsigned char* ifethaddr;
 	unsigned char* ifipaddr;
@@ -134,6 +134,9 @@ int main(){
 		// get interface name
 		iname = tmp->ifa_name;
 		
+		// create entry in hash map
+		imap[iname];
+		
 		// get IP addresses
 		if(tmp->ifa_addr->sa_family==AF_INET){
 				
@@ -141,15 +144,8 @@ int main(){
 				ifipaddr = (unsigned char *) &(ip->sin_addr.s_addr);
 
 					// add into interface map
-					imap[iname] = make_tuple(packet_socket, ifethaddr, ifipaddr);
-				
-					struct sockaddr_ll *eth  = (struct sockaddr_ll *) tmp->ifa_addr;
-					ifethaddr = (unsigned char *) eth->sll_addr; 
-				
-
-					// add into interface map
-					imap[iname] = make_tuple(packet_socket, ifethaddr, ifipaddr);
-				
+					get<2>(imap[iname]) = ifipaddr;
+	
 					printf("\n\n\tInterface: %s\n", iname.c_str());
 					printf("Socket: %d\n", get<0>(imap[iname]));
 					printf("MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
@@ -196,7 +192,10 @@ int main(){
 					if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
 						perror("bind");
 					}
-				
+			
+					// store in imap
+					get<0>(imap[iname]) = packet_socket;
+	
 					// read in router
 					if(!strncmp(&(tmp->ifa_name[0]),"r1", 2)){
 						printf("\tRouter Table 1\n");
@@ -233,7 +232,8 @@ int main(){
 					// get mac address	
 					eth  = (struct sockaddr_ll *) tmp->ifa_addr;
 					ifethaddr = (unsigned char *) eth->sll_addr; 
-				
+					
+					get<1>(imap[iname]) = ifethaddr;			
 		}
 	}
 	//free the interface list when we don't need it anymore
