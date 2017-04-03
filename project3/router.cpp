@@ -100,6 +100,7 @@ void send_arp_reply(
 
 int main(){  
 	int packet_socket;
+	struct sockaddr_ll *eth;
 	unsigned char* ifethaddr;
 	unsigned char* ifipaddr;
 	string iname;
@@ -135,15 +136,42 @@ int main(){
 		
 		// get IP addresses
 		if(tmp->ifa_addr->sa_family==AF_INET){
-			if(!strncmp(&(tmp->ifa_name[3]), "eth1",4)){
+				
 				struct sockaddr_in *ip = (struct sockaddr_in*) tmp->ifa_addr;
 				ifipaddr = (unsigned char *) &(ip->sin_addr.s_addr);
-			}
+
+					// add into interface map
+					imap[iname] = make_tuple(packet_socket, ifethaddr, ifipaddr);
+				
+					struct sockaddr_ll *eth  = (struct sockaddr_ll *) tmp->ifa_addr;
+					ifethaddr = (unsigned char *) eth->sll_addr; 
+				
+
+					// add into interface map
+					imap[iname] = make_tuple(packet_socket, ifethaddr, ifipaddr);
+				
+					printf("\n\n\tInterface: %s\n", iname.c_str());
+					printf("Socket: %d\n", get<0>(imap[iname]));
+					printf("MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
+					get<1>(imap[iname])[0],
+					get<1>(imap[iname])[1],
+					get<1>(imap[iname])[2],
+					get<1>(imap[iname])[3],
+					get<1>(imap[iname])[4],
+					get<1>(imap[iname])[5]
+					);
+
+					printf("IP address: %02d:%02d:%02d:%02d\n",
+					get<2>(imap[iname])[0],
+					get<2>(imap[iname])[1],
+					get<2>(imap[iname])[2],
+					get<2>(imap[iname])[3]
+					);		
 		}
 
 		if(tmp->ifa_addr->sa_family==AF_PACKET){
 			//create a packet socket on interface r?-eth1
-			if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
+			//if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
 				//printf("Creating Socket on interface %s\n",tmp->ifa_name);
 				//create a packet socket
 				//AF_PACKET makes it a packet socket
@@ -151,11 +179,13 @@ int main(){
 				//could also use SOCK_DGRAM to cut off link layer header
 				//ETH_P_ALL indicates we want all (upper layer) protocols
 				//we could specify just a specific one
-				packet_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-				if(packet_socket<0){
-					perror("socket");
-					return 2;
-				}
+				if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
+					packet_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+					if(packet_socket<0){
+						perror("socket");
+						return 2;
+					}
+		
 				//Bind the socket to the address, so we only get packets
 				//recieved on this specific interface. For packet sockets, the
 				//address structure is a struct sockaddr_ll (see the man page
@@ -163,32 +193,20 @@ int main(){
 				//Here, we can use the sockaddr we got from getifaddrs (which
 				//we could convert to sockaddr_ll if we needed to)
 			
-			//if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
-				if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
-					perror("bind");
-				}
-			//}
+					if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
+						perror("bind");
+					}
 				
-				// get mac address	
-				struct sockaddr_ll *eth  = (struct sockaddr_ll *) tmp->ifa_addr;
-				ifethaddr = (unsigned char *) eth->sll_addr; 
-				
-
-				// add into interface map
-				imap[iname] = make_tuple(packet_socket, ifethaddr, ifipaddr);
-				
-				printf("socket: %d\n", get<0>(imap[iname]));
-				
-				// read in router
-				if(!strncmp(&(tmp->ifa_name[0]),"r1", 2)){
-					printf("\tRouter Table 1\n");
-					ifstream rtable("r1-table.txt");
-					string line;
-					string src, pre, dest, iface;
-					while(getline(rtable, line)){
-						stringstream ss(line);
+					// read in router
+					if(!strncmp(&(tmp->ifa_name[0]),"r1", 2)){
+						printf("\tRouter Table 1\n");
+						ifstream rtable("r1-table.txt");
+						string line;
+						string src, pre, dest, iface;
+						while(getline(rtable, line)){
+							stringstream ss(line);
 							
-						while(ss >> src){
+							while(ss >> src){
 								ss >> dest;
 								ss >> iface;
 								pre = src.substr(0,7);	
@@ -199,15 +217,23 @@ int main(){
 								printf("Dest: %s\n", rmap[pre].first.c_str());
 								printf("Iface: %s\n", rmap[pre].second.c_str());
 
-						}
+							}
 						//printf("%s \n", line.c_str());
-					}
+						}
 				} else if(!strncmp(&(tmp->ifa_name[0]), "r2", 2)){
 					printf("On router 2\n");
 				} else {
 					printf("You are not on a mininet router! Could not open routing table.\n");
 				}
-			}
+		
+			}// close if(r1-eth1)
+		
+				
+	
+					// get mac address	
+					eth  = (struct sockaddr_ll *) tmp->ifa_addr;
+					ifethaddr = (unsigned char *) eth->sll_addr; 
+				
 		}
 	}
 	//free the interface list when we don't need it anymore
