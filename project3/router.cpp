@@ -32,19 +32,75 @@ struct arpheader {
 	unsigned char        dpa[4];
 };
 
-unsigned short cksum(unsigned short *buf, int count) {
-	register u_long sum = 0;
- 	while (count--){
+/*
+unsigned short checksum(void *b, int len)
+{	unsigned short *buf = b;
+	unsigned int sum=0;
+	unsigned short result;
+
+	for ( sum = 0; len > 1; len -= 2 )
 		sum += *buf++;
-		if (sum & 0xFFFF0000){
-			/* carry occurred,
-			 * so wrap around */
-			sum &= 0xFFFF;
-			sum++;
-		}
-	}
-	return ~(sum & 0xFFFF);
+	if ( len == 1 )
+		sum += *(unsigned char*)buf;
+	sum = (sum >> 16) + (sum & 0xFFFF);
+	sum += (sum >> 16);
+	result = ~sum;
+	return result;
 }
+*/
+void send_arp_request(
+	int packet_socket, 
+	unsigned char *ethsaddr, 
+	unsigned char *ipsaddr, 
+	unsigned char *ipdaddr){
+	
+	struct ether_header *eth;
+	struct arpheader arp;
+	unsigned char ethdaddr[6];
+	// setup broadcast mac
+	ethdaddr[0] = 255;
+	ethdaddr[1] = 255;
+	ethdaddr[2] = 255;
+	ethdaddr[3] = 255;
+	ethdaddr[4] = 255;
+	ethdaddr[5] = 255;
+	// build ether header
+	memcpy(eth->ether_dhost, ethdaddr, 6);
+	memcpy(eth->ether_shost, ethsaddr, 6);
+		
+	eth->ether_type = htons(0x0806); //arp
+	
+	// build arp header
+	arp.hardware_type = htons(1); // ether
+	arp.protocol_type = htons(2048); // IP
+	arp.hardware_addr_length = 6; // mac addr
+	arp.protocol_addr_length = 4; // ip addr
+	arp.op = htons(1); //arp request
+		
+	//ether addrs
+	memcpy(arp.dha, ethdaddr, 6);
+	memcpy(arp.sha, ethsaddr, 6);
+
+	// ip addrs
+	memcpy(arp.dpa, ipdaddr, 4);
+	memcpy(arp.spa, ipsaddr, 4);
+
+	// add headers into the buffer
+		
+	char responce[42];
+	memcpy(responce, eth, 14);
+	memcpy(&responce[14], &arp, 28);
+
+	printf("Size of arp request is: %d\n", (int) sizeof(responce));
+
+
+	int b = send(packet_socket, responce, 42, 0);
+
+	printf("%d bytes sent back\n==========================\n", b);
+
+
+}
+
 
 
 void send_arp_reply(
@@ -103,7 +159,7 @@ int main(){
 	struct sockaddr_ll *eth;
 	unsigned char* ifethaddr;
 	unsigned char* ifipaddr;
-	string iname;
+	string iname, router_iname;
 
 	// get list of interfaces (actually addresses)
 	struct ifaddrs *ifaddr, *tmp;
@@ -192,6 +248,9 @@ int main(){
 					if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
 						perror("bind");
 					}
+
+					// set router iname
+					router_iname = iname;
 			
 					// store in imap
 					get<0>(imap[iname]) = packet_socket;
@@ -313,20 +372,22 @@ int main(){
 			unsigned char routerMac[6];
 
 
+			
 			printf("Router MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",
-				ifethaddr[0],
-				ifethaddr[1],
-				ifethaddr[2],
-				ifethaddr[3],
-				ifethaddr[4],
-				ifethaddr[5]
+				get<1>(imap[router_iname])[0],
+				get<1>(imap[router_iname])[1],
+				get<1>(imap[router_iname])[2],
+				get<1>(imap[router_iname])[3],
+				get<1>(imap[router_iname])[4],
+				get<1>(imap[router_iname])[5]
 			);
 
+
 			printf("Router IP address: %02d:%02d:%02d:%02d\n",
-				ifipaddr[0],
-				ifipaddr[1],
-				ifipaddr[2],
-				ifipaddr[3]
+				get<2>(imap[router_iname])[0],
+				get<2>(imap[router_iname])[1],
+				get<2>(imap[router_iname])[2],
+				get<2>(imap[router_iname])[3]
 			);
 	
 			// if arp reply
@@ -339,13 +400,20 @@ int main(){
 				printf("I've got an ARP request\n");
 				
 				// arp request is for me
-				if(arp.dpa[0] == ifipaddr[0] &&
-					 arp.dpa[1] == ifipaddr[1] &&
-					 arp.dpa[2] == ifipaddr[2] &&
-					 arp.dpa[3] == ifipaddr[3]){
+				if(arp.dpa[0] == get<2>(imap[router_iname])[0] &&
+					 arp.dpa[1] == get<2>(imap[router_iname])[1] &&
+					 arp.dpa[2] == get<2>(imap[router_iname])[2] &&
+					 arp.dpa[3] == get<2>(imap[router_iname])[3]){
  
 					printf("Sending reply for arp header\n");
 					send_arp_reply(ifethaddr, eth, arp, packet_socket, buf);
+				
+				// arp request is for another host / router
+				} else {
+					printf("Sending arp request to find mac for next hop\n");
+					send_arp_request(packet_socket, ifethaddr, ifipaddr, arp.dpa); 
+
+
 				}
 			}
 			
@@ -370,6 +438,7 @@ int main(){
 			ip_1.daddr = ip_1.saddr;
 			ip_1.saddr = temp;
 			
+			/*	
 			int buffer_size = sizeof(buf);
 			int icmp_size = sizeof(struct icmphdr);	
 			int ether_ip_size = sizeof(struct ether_header) + sizeof(struct iphdr);
@@ -386,7 +455,7 @@ int main(){
 			memcpy(&checksum, &icmp_1, icmp_size);
 			memcpy(&checksum[icmp_size], &buf[buffer_size - data_size], data_size); 
 			icmp_1.checksum = cksum(checksum, check_16bit_wc);
-
+			*/
 			char resp[100];
 			memcpy(&resp, &eth_1, sizeof(struct ether_header));
 			memcpy(&resp[sizeof(struct ether_header)], &ip_1, sizeof(struct iphdr));
