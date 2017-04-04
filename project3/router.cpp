@@ -406,7 +406,7 @@ int main(){
 					 arp.dpa[3] == get<2>(imap[router_iname])[3]){
  
 					printf("Sending reply for arp header\n");
-					send_arp_reply(ifethaddr, eth, arp, packet_socket, buf);
+					send_arp_reply(get<1>(imap[router_iname]), eth, arp, packet_socket, buf);
 				
 				// arp request is for another host / router
 				} else {
