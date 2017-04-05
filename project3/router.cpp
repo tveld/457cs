@@ -72,8 +72,7 @@ void send_arp_request(
 	unsigned char *ipdaddr){
 	
 
-	printf("in arp request");
-	struct ether_header *eth;
+	struct ether_header eth;
 	struct arpheader arp;
 	unsigned char ethdaddr[6];
 	// setup broadcast mac
@@ -84,10 +83,10 @@ void send_arp_request(
 	ethdaddr[4] = 255;
 	ethdaddr[5] = 255;
 	// build ether header
-	memcpy(eth->ether_dhost, ethdaddr, 6);
-	memcpy(eth->ether_shost, ethsaddr, 6);
+	memcpy(eth.ether_dhost, ethdaddr, 6);
+	memcpy(eth.ether_shost, ethsaddr, 6);
 		
-	eth->ether_type = htons(0x0806); //arp
+	eth.ether_type = htons(0x0806); //arp
 	
 	// build arp header
 	arp.hardware_type = htons(1); // ether
@@ -96,7 +95,6 @@ void send_arp_request(
 	arp.protocol_addr_length = 4; // ip addr
 	arp.op = htons(1); //arp request
 	
-	printf("Before ether addr");		
 	//ether addrs
 	memcpy(arp.dha, ethdaddr, 6);
 	memcpy(arp.sha, ethsaddr, 6);
@@ -106,10 +104,9 @@ void send_arp_request(
 	memcpy(arp.spa, ipsaddr, 4);
 
 	// add headers into the buffer
-	printf("before cpy into buffer");
 		
 	char responce[42];
-	memcpy(responce, eth, 14);
+	memcpy(responce, &eth, 14);
 	memcpy(&responce[14], &arp, 28);
 
 	printf("Size of arp request is: %d\n", (int) sizeof(responce));
@@ -496,7 +493,7 @@ int main(){
 			printf("Sending ARP request\n");
 			unsigned char*  eth_saddr = get<1>(imap[router_iname]);
 			unsigned char* ip_saddr = get<2>(imap[router_iname]);
-			//unsigned char* ip_daddr = (unsigned char*) &ip_1.daddr;
+			unsigned char* ip_daddr = (unsigned char*) &ip_1.daddr;
 			send_arp_request(packet_socket, get<1>(imap[router_iname]),
 					get<2>(imap[router_iname]),(unsigned char*)&ip_1.daddr);
 		
