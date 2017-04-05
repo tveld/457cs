@@ -71,6 +71,8 @@ void send_arp_request(
 	unsigned char *ipsaddr, 
 	unsigned char *ipdaddr){
 	
+
+	printf("in arp request");
 	struct ether_header *eth;
 	struct arpheader arp;
 	unsigned char ethdaddr[6];
@@ -93,7 +95,8 @@ void send_arp_request(
 	arp.hardware_addr_length = 6; // mac addr
 	arp.protocol_addr_length = 4; // ip addr
 	arp.op = htons(1); //arp request
-		
+	
+	printf("Before ether addr");		
 	//ether addrs
 	memcpy(arp.dha, ethdaddr, 6);
 	memcpy(arp.sha, ethsaddr, 6);
@@ -103,6 +106,7 @@ void send_arp_request(
 	memcpy(arp.spa, ipsaddr, 4);
 
 	// add headers into the buffer
+	printf("before cpy into buffer");
 		
 	char responce[42];
 	memcpy(responce, eth, 14);
@@ -436,6 +440,7 @@ int main(){
 			
 			// ICMP packet
 		} else {
+
 			printf("I've got an ICMP packet\n");
 			
 			struct ether_header eth_1;
@@ -448,35 +453,54 @@ int main(){
 
 			memcpy(&icmp_1, &buf[sizeof(struct ether_header) + sizeof(struct iphdr)], sizeof(struct icmphdr));
 
-			memcpy(eth_1.ether_dhost, eth_1.ether_shost, 6);
-			memcpy(eth_1.ether_shost, get<1>(imap[router_iname]), 6);
+			unsigned char* packetaddr = (unsigned char *) &ip_1.daddr;
+			unsigned char* routeraddr = get<2>(imap[router_iname]);
+			if(packetaddr[0] == routeraddr[0] &&
+				 packetaddr[1] == routeraddr[1] &&
+				 packetaddr[2] == routeraddr[2] &&
+				 packetaddr[3] == routeraddr[3]){
+				
+				printf("ICMP packet for this router\n\n");
+					
+				memcpy(eth_1.ether_dhost, eth_1.ether_shost, 6);
+				memcpy(eth_1.ether_shost, get<1>(imap[router_iname]), 6);
 		
-			uint32_t temp = ip_1.daddr;
-			ip_1.daddr = ip_1.saddr;
-			ip_1.saddr = temp;
+				uint32_t temp = ip_1.daddr;
+				ip_1.daddr = ip_1.saddr;
+				ip_1.saddr = temp;
 			
-			printf("Incoming Checksum: %04x\n", ntohs(icmp_1.checksum));
-			icmp_1.checksum = 0;
-			icmp_1.type = 0;
+				printf("Incoming Checksum: %04x\n", ntohs(icmp_1.checksum));
+				icmp_1.checksum = 0;
+				icmp_1.type = 0;
 			
-			char resp[98];
+				char resp[98];
 
-			memcpy(&resp, &eth_1, sizeof(struct ether_header));
-			memcpy(&resp[sizeof(struct ether_header)], &ip_1, sizeof(struct iphdr));
-			memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
+				memcpy(&resp, &eth_1, sizeof(struct ether_header));
+				memcpy(&resp[sizeof(struct ether_header)], &ip_1, sizeof(struct iphdr));
+				memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
 			
-			icmp_1.checksum = checksum(resp, sizeof(resp));
-			memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
+				icmp_1.checksum = checksum(resp, sizeof(resp));
+				memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
 
-			// copy data portion
-			memcpy(&resp[42], &buf[42], 56);
+				// copy data portion
+				memcpy(&resp[42], &buf[42], 56);
 
-			printf("Calculated checksum: %04x\n", ntohs(icmp_1.checksum));
-			int c = send(packet_socket, resp, 98, 0);
-			printf("Bytes sent: %d\n", c);	
+				printf("Calculated checksum: %04x\n", ntohs(icmp_1.checksum));
+				int c = send(packet_socket, resp, 98, 0);
+				printf("Bytes sent: %d\n", c);	
 
+		} else {
+
+			printf("\nICMP for a different router/host\n");
 			
-
+			printf("Sending ARP request\n");
+			unsigned char*  eth_saddr = get<1>(imap[router_iname]);
+			unsigned char* ip_saddr = get<2>(imap[router_iname]);
+			//unsigned char* ip_daddr = (unsigned char*) &ip_1.daddr;
+			send_arp_request(packet_socket, get<1>(imap[router_iname]),
+					get<2>(imap[router_iname]),(unsigned char*)&ip_1.daddr);
+		
+		}
 	}
 		//what else to do is up to you, you can send packets with send,
 		//just like we used for TCP sockets (or you can use sendto, but it
