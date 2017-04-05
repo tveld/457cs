@@ -183,7 +183,7 @@ int main(){
 	struct ifaddrs *ifaddr, *tmp;
 	// hash map to hold table info
 	// key: prefix   first: next hop   second: interface name
-	unordered_map<string, pair<string, string>> rmap;
+	unordered_map<unsigned char*, pair<string, string>> rmap;
 	
 	// hash map to hold interface info
 	// key: interface name first:socket second: mac third: ip
@@ -249,13 +249,30 @@ int main(){
 				//could also use SOCK_DGRAM to cut off link layer header
 				//ETH_P_ALL indicates we want all (upper layer) protocols
 				//we could specify just a specific one
-				if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
+				if(!strncmp(&(tmp->ifa_name[3]), "eth0",4)){
+					packet_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+					get<0>(imap[iname]) = packet_socket;
+					if(bind(packet_socket, tmp->ifa_addr, sizeof(struct sockaddr_ll))== -1){ 
+						perror("bind");
+					}
+					
+				}
+				
+				if(!strncmp(&(tmp->ifa_name[3]), "eth1", 4)){
+					packet_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+					get<0>(imap[iname]) = packet_socket;
+					if(bind(packet_socket, tmp->ifa_addr, sizeof(struct sockaddr_ll)) == -1){
+						perror("bind");
+					}
+				}
+
+				if(!strncmp(&(tmp->ifa_name[3]),"eth2",4)){
 					packet_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 					if(packet_socket<0){
 						perror("socket");
 						return 2;
 					}
-		
+				
 				//Bind the socket to the address, so we only get packets
 				//recieved on this specific interface. For packet sockets, the
 				//address structure is a struct sockaddr_ll (see the man page
@@ -263,6 +280,7 @@ int main(){
 				//Here, we can use the sockaddr we got from getifaddrs (which
 				//we could convert to sockaddr_ll if we needed to)
 			
+
 					if(bind(packet_socket,tmp->ifa_addr,sizeof(struct sockaddr_ll))==-1){
 						perror("bind");
 					}
@@ -278,20 +296,22 @@ int main(){
 						printf("\tRouter Table 1\n");
 						ifstream rtable("r1-table.txt");
 						string line;
-						string src, pre, dest, iface;
+						string src, dest, iface;
+						const char* pre;
 						while(getline(rtable, line)){
 							stringstream ss(line);
 							
 							while(ss >> src){
 								ss >> dest;
 								ss >> iface;
-								pre = src.substr(0,7);	
-								rmap[pre].first = dest;
-								rmap[pre].second = iface;
+								pre = src.substr(0,7).c_str();	
+								unsigned char* temp =(unsigned char*)inet_addr(pre);
+								rmap[temp].first = dest;
+								rmap[temp].second = iface;
 						
-								printf("Prefix: %s\n", pre.c_str());
-								printf("Dest: %s\n", rmap[pre].first.c_str());
-								printf("Iface: %s\n", rmap[pre].second.c_str());
+								printf("Prefix: %s\n", pre);
+								printf("Dest: %s\n", rmap[temp].first.c_str());
+								printf("Iface: %s\n", rmap[temp].second.c_str());
 
 							}
 						//printf("%s \n", line.c_str());
@@ -332,7 +352,7 @@ int main(){
 		//this packet is incoming or outgoing (when using ETH_P_ALL, we
 		//see packets in both directions. Only outgoing can be seen when
 		//using a packet socket with some specific protocol)
-		int n = recvfrom(packet_socket, buf, 1500,0,(struct sockaddr*)&recvaddr, &recvaddrlen);
+		int n = recvfrom(get<0>(imap[router_iname]), buf, 1500,0,(struct sockaddr*)&recvaddr, &recvaddrlen);
 		//ignore outgoing packets (we can't disable some from being sent
 		//by the OS automatically, for example ICMP port unreachable
 		//messages, so we will just ignore them here)
@@ -424,12 +444,13 @@ int main(){
 					 arp.dpa[3] == get<2>(imap[router_iname])[3]){
  
 					printf("Sending reply for arp header\n");
-					send_arp_reply(get<1>(imap[router_iname]), eth, arp, packet_socket, buf);
+					send_arp_reply(get<1>(imap[router_iname]), eth, arp, get<0>(imap[router_iname]), buf);
 				
 				// arp request is for another host / router
 				} else {
 					printf("Sending arp request to find mac for next hop\n");
-					send_arp_request(packet_socket, ifethaddr, ifipaddr, arp.dpa); 
+					// look up hash for interface
+					// send_arp_request(poop_dollar, ifethaddr, ifipaddr, arp.dpa); 
 
 
 				}
@@ -483,7 +504,7 @@ int main(){
 				memcpy(&resp[42], &buf[42], 56);
 
 				printf("Calculated checksum: %04x\n", ntohs(icmp_1.checksum));
-				int c = send(packet_socket, resp, 98, 0);
+				int c = send(get<0>(imap[router_iname]), resp, 98, 0);
 				printf("Bytes sent: %d\n", c);	
 
 		} else {
@@ -493,10 +514,10 @@ int main(){
 			printf("Sending ARP request\n");
 			unsigned char*  eth_saddr = get<1>(imap[router_iname]);
 			unsigned char* ip_saddr = get<2>(imap[router_iname]);
-			unsigned char* ip_daddr = (unsigned char*) &ip_1.daddr;
+			unsigned char* ip_daddr =  &ip_1.daddr;
 			send_arp_request(packet_socket, get<1>(imap[router_iname]),
 					get<2>(imap[router_iname]),(unsigned char*)&ip_1.daddr);
-		
+			
 		}
 	}
 		//what else to do is up to you, you can send packets with send,
