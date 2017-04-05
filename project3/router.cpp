@@ -172,7 +172,8 @@ void send_arp_reply(
 
 }
 
-int main(){  
+int main(){
+	int router_socket = 0;  
 	int packet_socket = 0;
 	struct sockaddr_ll *eth;
 	unsigned char* ifethaddr;
@@ -255,24 +256,25 @@ int main(){
 					if(bind(packet_socket, tmp->ifa_addr, sizeof(struct sockaddr_ll))== -1){ 
 						perror("bind");
 					}
-					
 				}
 				
-				if(!strncmp(&(tmp->ifa_name[3]), "eth1", 4)){
+				if(!strncmp(&(tmp->ifa_name[3]), "eth2", 4)){
 					packet_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 					get<0>(imap[iname]) = packet_socket;
+				
 					if(bind(packet_socket, tmp->ifa_addr, sizeof(struct sockaddr_ll)) == -1){
 						perror("bind");
 					}
 				}
 
-				if(!strncmp(&(tmp->ifa_name[3]),"eth2",4)){
+				if(!strncmp(&(tmp->ifa_name[3]),"eth1",4)){
 					packet_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 					if(packet_socket<0){
 						perror("socket");
 						return 2;
 					}
 				
+					router_socket = packet_socket;
 				//Bind the socket to the address, so we only get packets
 				//recieved on this specific interface. For packet sockets, the
 				//address structure is a struct sockaddr_ll (see the man page
@@ -296,24 +298,30 @@ int main(){
 						printf("\tRouter Table 1\n");
 						ifstream rtable("r1-table.txt");
 						string line;
-						string src, dest, iface;
-						const char* pre;
+						string src,prestr, dest, iface;
+						unsigned char pre[3];
 						while(getline(rtable, line)){
 							stringstream ss(line);
 							
 							while(ss >> src){
 								ss >> dest;
 								ss >> iface;
-								pre = src.substr(0,7).c_str();	
-								unsigned char* temp =(unsigned char*)inet_addr(pre);
-								rmap[temp].first = dest;
-								rmap[temp].second = iface;
-						
-								printf("Prefix: %s\n", pre);
-								printf("Dest: %s\n", rmap[temp].first.c_str());
-								printf("Iface: %s\n", rmap[temp].second.c_str());
-
-							}
+								prestr = src.substr(0,8).c_str();	
+								printf("Source addr in string form: %s\n", prestr.c_str());
+								uint32_t addr = inet_addr(prestr.c_str());
+								unsigned char* temp = (unsigned char*) &addr;
+								printf("whole address:%02d: %02d: %02d: %02d\n\n", temp[0], temp[1], temp[2], temp[3]);
+								pre[0] = temp [0];
+								pre[1] = temp [1];
+								pre[2] = temp [2];
+	
+								
+								rmap[&pre].first = dest;
+								rmap[&pre].second = iface;
+								printf("Prefix: %02d : %02d : %02d:\n", pre[0], pre[1], pre[2]);
+								printf("Dest: %s\n", rmap[pre].first.c_str());
+								printf("Iface: %s\n", rmap[pre].second.c_str());
+							}	
 						//printf("%s \n", line.c_str());
 						}
 				} else if(!strncmp(&(tmp->ifa_name[0]), "r2", 2)){
@@ -352,7 +360,7 @@ int main(){
 		//this packet is incoming or outgoing (when using ETH_P_ALL, we
 		//see packets in both directions. Only outgoing can be seen when
 		//using a packet socket with some specific protocol)
-		int n = recvfrom(get<0>(imap[router_iname]), buf, 1500,0,(struct sockaddr*)&recvaddr, &recvaddrlen);
+		int n = recvfrom(router_socket, buf, 1500,0,(struct sockaddr*)&recvaddr, &recvaddrlen);
 		//ignore outgoing packets (we can't disable some from being sent
 		//by the OS automatically, for example ICMP port unreachable
 		//messages, so we will just ignore them here)
@@ -514,7 +522,18 @@ int main(){
 			printf("Sending ARP request\n");
 			unsigned char*  eth_saddr = get<1>(imap[router_iname]);
 			unsigned char* ip_saddr = get<2>(imap[router_iname]);
-			unsigned char* ip_daddr =  &ip_1.daddr;
+			unsigned char* ip_daddr =  (unsigned char*)&ip_1.daddr;
+			unsigned char pre[3];
+
+			pre[0] = ip_daddr[0];
+			pre[1] = ip_daddr[1];
+			pre[2] = ip_daddr[2];
+	
+			printf("%02d : %02d : %02d\n", pre[0], pre[1], pre[2]);
+
+			// find interface in router table
+			printf("Interface %s\n", rmap[&pre].second.c_str());
+			
 			send_arp_request(packet_socket, get<1>(imap[router_iname]),
 					get<2>(imap[router_iname]),(unsigned char*)&ip_1.daddr);
 			
