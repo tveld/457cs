@@ -1,4 +1,5 @@
 #include <netpacket/packet.h> 
+#include <inttypes.h>
 #include <net/ethernet.h>
 #include <stdio.h>
 #include <errno.h>
@@ -32,22 +33,38 @@ struct arpheader {
 	unsigned char        dpa[4];
 };
 
-/*
-unsigned short checksum(void *b, int len)
-{	unsigned short *buf = b;
-	unsigned int sum=0;
-	unsigned short result;
 
-	for ( sum = 0; len > 1; len -= 2 )
-		sum += *buf++;
-	if ( len == 1 )
-		sum += *(unsigned char*)buf;
-	sum = (sum >> 16) + (sum & 0xFFFF);
-	sum += (sum >> 16);
-	result = ~sum;
-	return result;
-}
-*/
+
+			uint16_t checksum(char* resp, int size_of_packet){
+				
+				uint32_t acc = 0xffff;
+	
+				for(size_t i=34; i+1<size_of_packet; i+=2){
+					uint16_t word;
+					memcpy(&word, resp+i, 2);
+					acc+=ntohs(word);
+					if(acc>0xffff){
+						acc -=0xffff;
+					}
+				}
+
+				if(size_of_packet&1) {
+					uint16_t word=0;
+					memcpy(&word, resp+size_of_packet-1, 1);
+					acc+=ntohs(word);
+					if (acc>0xffff){
+						acc-=0xffff;
+					}
+				}
+
+			return htons(~acc);
+		 }
+
+
+
+
+
+
 void send_arp_request(
 	int packet_socket, 
 	unsigned char *ethsaddr, 
@@ -438,30 +455,22 @@ int main(){
 			ip_1.daddr = ip_1.saddr;
 			ip_1.saddr = temp;
 			
-			/*	
-			int buffer_size = sizeof(buf);
-			int icmp_size = sizeof(struct icmphdr);	
-			int ether_ip_size = sizeof(struct ether_header) + sizeof(struct iphdr);
-			int check_size = buffer_size - ether_ip_size;
-			int data_size = check_size - icmp_size;
-
-			int check_16bit_wc = check_size / 2;
-
-			unsigned short checksum[check_size];
-
-			icmp_1.type = 0;
+			printf("Incoming Checksum: %04x\n", ntohs(icmp_1.checksum));
 			icmp_1.checksum = 0;
-
-			memcpy(&checksum, &icmp_1, icmp_size);
-			memcpy(&checksum[icmp_size], &buf[buffer_size - data_size], data_size); 
-			icmp_1.checksum = cksum(checksum, check_16bit_wc);
-			*/
-			char resp[100];
+			icmp_1.type = 0;
+			
+			char resp[98];
 			memcpy(&resp, &eth_1, sizeof(struct ether_header));
 			memcpy(&resp[sizeof(struct ether_header)], &ip_1, sizeof(struct iphdr));
 			memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
 			
-			int c = send(packet_socket, resp, 42, 0);
+			icmp_1.checksum = checksum(resp, sizeof(resp));
+			memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
+
+
+
+			printf("Calculated checksum: %04x\n", ntohs(icmp_1.checksum));
+			int c = send(packet_socket, resp, 98, 0);
 			printf("Bytes sent: %d\n", c);	
 
 			
