@@ -449,7 +449,7 @@ int main(){
 			memcpy(&icmp_1, &buf[sizeof(struct ether_header) + sizeof(struct iphdr)], sizeof(struct icmphdr));
 
 			memcpy(eth_1.ether_dhost, eth_1.ether_shost, 6);
-			memcpy(eth_1.ether_shost, ifethaddr, 6);
+			memcpy(eth_1.ether_shost, get<1>(imap[router_iname]), 6);
 		
 			uint32_t temp = ip_1.daddr;
 			ip_1.daddr = ip_1.saddr;
@@ -460,6 +460,7 @@ int main(){
 			icmp_1.type = 0;
 			
 			char resp[98];
+
 			memcpy(&resp, &eth_1, sizeof(struct ether_header));
 			memcpy(&resp[sizeof(struct ether_header)], &ip_1, sizeof(struct iphdr));
 			memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
@@ -467,7 +468,8 @@ int main(){
 			icmp_1.checksum = checksum(resp, sizeof(resp));
 			memcpy(&resp[sizeof(struct ether_header) + sizeof(struct iphdr)], &icmp_1, sizeof(struct icmphdr));
 
-
+			// copy data portion
+			memcpy(&resp[42], &buf[42], 56);
 
 			printf("Calculated checksum: %04x\n", ntohs(icmp_1.checksum));
 			int c = send(packet_socket, resp, 98, 0);
