@@ -1,3 +1,5 @@
+// Virtual Router
+// Authors: Troy Veldhuizen, Matt Pairitz, Matt Noblett
 #include <netpacket/packet.h> 
 #include <inttypes.h>
 #include <net/ethernet.h>
