@@ -118,9 +118,19 @@ void send_arp_request(
 
 	int b = send(packet_socket, responce, 42, 0);
 
-	printf("%d bytes sent back\n==========================\n", b);
+	printf("%d bytes for request\n==========================\n", b);
 
-
+	int run = 1;
+	while(run){
+		char buf[1500];
+		struct sockaddr_ll recvaddr;
+		socklen_t recvaddrlen=sizeof(struct sockaddr_ll);
+		int n = recvfrom(packet_socket, buf, 1500,0,(struct sockaddr*)&recvaddr, &recvaddrlen);
+		if(recvaddr.sll_pkttype==PACKET_OUTGOING)
+			continue;
+		run = 0;
+		printf("Recieved responce from arp request\n");
+	}
 }
 
 
@@ -516,7 +526,6 @@ int main(){
 
 			printf("\nICMP for a different router/host\n");
 			
-			printf("Sending ARP request\n");
 			unsigned char* ip_daddr =  (unsigned char*)&ip_1.daddr;
 			unsigned char pre[3];
 
@@ -529,33 +538,36 @@ int main(){
 	
 			uint32_t prefix = *(uint32_t *)pre;
 			// find interface in router table
-			printf("Interface %s\n", rmap[prefix].second.c_str());
-			printf("Interface r1-eth0 IP: %02d : %02d : %02d : %02d\n", 
+			// if prefix is in routing table
+			if(rmap.find(prefix) != rmap.end()){
+				printf("Sending ARP request\n");
+				printf("Interface %s\n", rmap[prefix].second.c_str());
+				printf("Interface r1-eth0 IP: %02d : %02d : %02d : %02d\n", 
 					get<2>(imap["r1-eth0"])[0],
 					get<2>(imap["r1-eth0"])[1],
 					get<2>(imap["r1-eth0"])[2],
 					get<2>(imap["r1-eth0"])[3]
-			);
-			printf("Interface r1-eth1 IP: %02d : %02d : %02d : %02d\n", 
+				);
+				printf("Interface r1-eth1 IP: %02d : %02d : %02d : %02d\n", 
 					get<2>(imap["r1-eth1"])[0],
 					get<2>(imap["r1-eth1"])[1],
 					get<2>(imap["r1-eth1"])[2],
 					get<2>(imap["r1-eth1"])[3]
-			);
-			printf("Interface r1-eth2 IP: %02d : %02d : %02d : %02d\n", 
+				);
+				printf("Interface r1-eth2 IP: %02d : %02d : %02d : %02d\n", 
 					get<2>(imap["r1-eth2"])[0],
 					get<2>(imap["r1-eth2"])[1],
 					get<2>(imap["r1-eth2"])[2],
 					get<2>(imap["r1-eth2"])[3]
-			);
+				);
 
-			// if next hop has value use it
-			if(rmap[prefix].first != "-"){
-				printf("Found next hop.\n");
-				printf("IP: %s", rmap[prefix].first.c_str());
-				uint32_t addr = inet_addr(rmap[prefix].first.c_str());
-				ip_daddr = (unsigned char *) &addr;
-			}
+				if(rmap[prefix].first != "-"){
+					printf("Found next hop.\n");
+					printf("IP: %s", rmap[prefix].first.c_str());
+					uint32_t addr = inet_addr(rmap[prefix].first.c_str());
+					ip_daddr = (unsigned char *) &addr;
+				}
+			
 			// socket number
 			// eth source address
 			// ip source address
@@ -565,7 +577,9 @@ int main(){
 											 get<2>(imap[rmap[prefix].second]),
 											 ip_daddr
 										);
-			
+			} else {
+				printf("Could not find in table, dropping packet\n");
+			}
 		}
 	}
 		//what else to do is up to you, you can send packets with send,
