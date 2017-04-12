@@ -5,11 +5,14 @@ import java.lang.Thread;
 public class server_threaded {
 	public static void main (String[] args) {
 		try {
+            int clientCnt = 1;
 			ServerSocket server = new ServerSocket(2020);
-			while (true) {
+            while (true) {
 				Socket client = server.accept();
 				EchoHandler handler = new EchoHandler(client);
 				handler.start();
+                System.out.println("Clients Connected: " + clientCnt);
+                ++clientCnt;
 			}
 		}
 		catch (Exception e) {
@@ -26,7 +29,6 @@ class EchoHandler extends Thread {
 
 	public void run () {
 		try {
-            System.out.println("I'm in a thread\n");
 		    PrintWriter out =
                 new PrintWriter(client.getOutputStream(), true);                   
             BufferedReader in = new BufferedReader(
