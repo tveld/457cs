@@ -26,18 +26,18 @@ class EchoHandler extends Thread {
 
 	public void run () {
 		try {
-			BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
-			PrintWriter writer = new PrintWriter(client.getOutputStream(), true);
-
-			while (true) {
-				String line = reader.readLine();
-				if (line.trim().equals("bye")) {
-					writer.println("bye!");
-					break;
-				}
-				writer.println("[echo] " + line);
-			}
-		}
+            System.out.println("I'm in a thread\n");
+		    PrintWriter out =
+                new PrintWriter(client.getOutputStream(), true);                   
+            BufferedReader in = new BufferedReader(
+                new InputStreamReader(client.getInputStream()));
+            
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                out.println(inputLine);
+                System.out.println("client: " + inputLine);
+            }
+        }
 		catch (Exception e) {
 			System.err.println("Exception caught: client disconnected.");
 		}

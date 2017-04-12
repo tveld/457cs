@@ -22,7 +22,6 @@ public class client_threaded {
             while ((userInput = stdIn.readLine()) != null) {
                 out.println(userInput);
                 System.out.println("echo: " + in.readLine());
-
             }
 			
 		} catch (Exception e){
