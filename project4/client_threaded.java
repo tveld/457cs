@@ -7,30 +7,23 @@ public class client_threaded {
 
 	public static void main(String [] args) throws IOException {
 
-
-		Socket socket;
-		String line;
-		BufferedReader in;
-		PrintStream os;
-
 		try {
-			socket = new Socket("127.0.0.1", 2020);
-			in = new BufferedReader(new InputStreamReader(System.in));
-			InputStream reader = socket.getInputStream();
-			OutputStream outstream = socket.getOutputStream();
-			PrintWriter out = new PrintWriter(outstream);
+            Socket echoSocket = new Socket("127.0.0.1", 2020);
+            PrintWriter out =
+                new PrintWriter(echoSocket.getOutputStream(), true);
+            BufferedReader in =
+                new BufferedReader(
+                    new InputStreamReader(echoSocket.getInputStream()));
+            BufferedReader stdIn =
+                new BufferedReader(
+                    new InputStreamReader(System.in));
+            
+            String userInput;
+            while ((userInput = stdIn.readLine()) != null) {
+                out.println(userInput);
+                System.out.println("echo: " + in.readLine());
 
-			for(int i=0; i<10; i++){
-				System.out.print("Enter a message: ");
-				line = in.readLine();
-				out.print(line);
-			}
-
-			out.close();
-			in.close();
-
-
-
+            }
 			
 		} catch (Exception e){
 			e.printStackTrace();
