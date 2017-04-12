@@ -1,27 +1,29 @@
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.IOException;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 
-public class Worker implements Runnable{
-    protected Socket clientSocket = null;
-    protected String text   = null;
+class Worker implements Runnable
+{
 
-    public Worker(Socket clientSocket, String text) {
-        this.clientSocket = clientSocket;
-        this.text   = text;
+    Socket clientSocket;
+    BufferedReader in = null;
+
+    public client_threaded(Socket client){
+        this.clientSocket = client;
     }
-    public void run() {
-        try {
-            InputStream inputstream  = clientSocket.getInputStream();
-            OutputStream outputstream = clientSocket.getOutputStream();
-            long timetaken = System.currentTimeMillis();
-            outputstream.write(("Worker: " + this.text + " - " +timetaken +"").getBytes());
-            outputstream.close();
-            inputstream.close();
-            System.out.println("Your request has processed in time : " + timetaken);
-        } catch (IOException e) {           
+
+    public void run(){
+        try{
+            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String line;
+
+            while((line = in.readLine()) != null){
+                System.out.println(line);
+            }
+        } catch (IOException e){
             e.printStackTrace();
         }
     }
+
+
+
 }
