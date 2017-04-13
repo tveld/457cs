@@ -1,0 +1,2 @@
+javac server_threaded.java
+javac client_threaded.java
