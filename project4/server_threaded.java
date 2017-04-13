@@ -17,8 +17,8 @@ public class server_threaded {
 				handler.start();
 				System.out.println("Clients Connected: " + clientCnt);
 				System.out.println(
-					clients.get(clientCnt).getRemoteSocketAddress().toString()
-					);
+						clients.get(clientCnt).getRemoteSocketAddress().toString()
+						);
 			}
 		}
 		catch (Exception e) {
@@ -36,22 +36,45 @@ class EchoHandler extends Thread {
 		this.client = client;
 		this.clients = cl;
 	}
-
-	static private String getListOfClients(ConcurrentHashMap<Integer, Socket> clients){
-			String clientList="";
-				for(int i = 1; i <= clients.size(); ++i){
-					clientList += String.valueOf("ID: " + i + " ");
-					clientList += "IP: " + clients.get(i).getRemoteSocketAddress().toString();
-				}
-			return clientList;
+	/*****************************************************************************
+	 * Function used to get the list of connected clients to the server
+	 * This gets printed to the client that has requested the list.
+	 *****************************************************************************/
+	static private String getListOfClients(
+			ConcurrentHashMap<Integer, Socket> clients){
+		String clientList="";
+		for(int i = 1; i <= clients.size(); ++i){
+			clientList += String.valueOf("ID: " + i + " ");
+			clientList += "IP: " + clients.get(i).getRemoteSocketAddress().toString();
 		}
+		return clientList;
+	}
+	
+	/*****************************************************************************
+	 * Function used to broadcast the received message from a client to all 
+	 * connected clients that are detailed within the hashmap.
+	 *****************************************************************************/
+	static private String broadcastMessage(
+			ConcurrentHashMap<Integer, Socket> clients, String inputLine){
+		for(int i = 1; i <= clients.size(); ++i){
+			PrintWriter out = null;
+			try {
+				out = new PrintWriter(clients.get(i).getOutputStream(), true);
+			} catch (IOException e) {
+				out.println(inputLine);
+			}                   
+			
+			System.out.println("Just printed to client " + i);
+		}
+		return inputLine;
+	}
 
 	public void run () {
 
 		try {
 
 			BufferedReader in = new BufferedReader(
-				new InputStreamReader(client.getInputStream()));
+					new InputStreamReader(client.getInputStream()));
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
@@ -59,16 +82,6 @@ class EchoHandler extends Thread {
 					PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
 					out.println(getListOfClients(clients));
 				}
-
-
-/*
-				for(int i = 1; i <= clients.size(); ++i){
-					PrintWriter out = new PrintWriter(clients.get(i).getOutputStream(), true);                   
-					out.println(inputLine);
-					System.out.println("Just printed to client " + i);
-				}
-*/
-
 
 				System.out.println("client: " + inputLine);
 			}
@@ -85,4 +98,3 @@ class EchoHandler extends Thread {
 
 	}
 }
-
