@@ -55,18 +55,18 @@ class EchoHandler extends Thread {
 	 * connected clients that are detailed within the hashmap.
 	 *****************************************************************************/
 	static private String broadcastMessage(
-			ConcurrentHashMap<Integer, Socket> clients, String inputLine){
+			ConcurrentHashMap<Integer, Socket> clients, String inputSplits){
 		for(int i = 1; i <= clients.size(); ++i){
 			PrintWriter out = null;
 			try {
 				out = new PrintWriter(clients.get(i).getOutputStream(), true);
 			} catch (IOException e) {
-				out.println(inputLine);
+				out.println(inputSplits);
 			}                   
 			
 			System.out.println("Just printed to client " + i);
 		}
-		return inputLine;
+		return inputSplits;
 	}
 
 	public void run () {
@@ -78,9 +78,14 @@ class EchoHandler extends Thread {
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
+				String inputSplits[] = inputLine.split("\\s+");
 				if (inputLine.equals("list")){
 					PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
 					out.println(getListOfClients(clients));
+				}
+				if(inputSplits[0].equals("broadcast")){
+					PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
+					out.println(broadcastMessage(clients, inputSplits[1]));
 				}
 
 				System.out.println("client: " + inputLine);
