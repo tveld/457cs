@@ -38,9 +38,10 @@ class EchoHandler extends Thread {
 	}
 
 	static private String getListOfClients(ConcurrentHashMap<Integer, Socket> clients){
-			String clientList=null;
+			String clientList="";
 				for(int i = 1; i <= clients.size(); ++i){
-					clientList += String.valueOf(i + clients.get(i).getRemoteSocketAddress().toString() +'\n');
+					clientList += String.valueOf("ID: " + i + " ");
+					clientList += "IP: " + clients.get(i).getRemoteSocketAddress().toString();
 				}
 			return clientList;
 		}
@@ -54,9 +55,8 @@ class EchoHandler extends Thread {
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
-				if (String.valueOf(inputLine) == "list"){
-					System.out.println("Here");
-					PrintWriter out = new PrintWriter(client.getOutputStream(), true);
+				if (inputLine.equals("list")){
+					PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
 					out.println(getListOfClients(clients));
 				}
 
