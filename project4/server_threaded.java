@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.lang.Thread;
+import java.util.Arrays;
 import java.util.concurrent.*;
 
 public class server_threaded {
@@ -62,7 +63,7 @@ class EchoHandler extends Thread {
 				String message = remakeBroadcast(inputSplit);
 				out.println(message);
 			} catch (IOException e) {
-				out.println(inputSplit);
+				e.printStackTrace();
 			}                   
 			
 			System.out.println("Just printed to client " + i);
@@ -98,6 +99,30 @@ class EchoHandler extends Thread {
 		return false;
 	}
 
+	static private String chat(ConcurrentHashMap<Integer, Socket> clients, String message, int id){
+
+		String resp = "";
+		if(clients.get(id) != null){
+			try {
+				PrintWriter out = new PrintWriter(clients.get(id).getOutputStream(), true);
+				out.println(message);
+				System.out.println("Sent message to client: " + id);
+				resp = "Sent message to client";
+			} catch (Exception e) {
+				System.err.println("Exception caught: client disconnected.");
+			}
+		} else {
+			System.out.println("Could not find client: " + id);
+			resp = "Could not find client";
+		}
+
+		return resp;
+	}
+
+
+
+
+
 	public void run () {
 
 		try {
@@ -126,13 +151,21 @@ class EchoHandler extends Thread {
 				else if (inputSplit[0].equals("broadcast")){
 					broadcastMessage(clients, inputSplit);
 				}
-/*
-				for(int i = 1; i <= clients.size(); ++i){
-					PrintWriter out = new PrintWriter(clients.get(i).getOutputStream(), true);                   
-					out.println(inputLine);
-					System.out.println("Just printed to client " + i);
+
+				else if(inputSplit[0].equals("chat")){
+					int id = Integer.parseInt(inputSplit[1]);
+					String message = "";
+					String[] tmp = Arrays.copyOfRange(inputSplit, 2, inputSplit.length);
+					for(int i = 0; i < tmp.length; ++i){
+						message += tmp[i]+" ";
+					}
+
+					System.out.println("in chat\n");
+					PrintWriter send = new PrintWriter(this.client.getOutputStream(), true);
+					send.println(chat(clients, message,id));	
 				}
-*/
+
+
 				System.out.println("client: " + inputLine);
 			}
 		}
