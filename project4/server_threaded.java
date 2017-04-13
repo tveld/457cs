@@ -25,6 +25,7 @@ public class server_threaded {
 			System.err.println("Exception caught:" + e);
 		}
 	}
+
 }
 
 class EchoHandler extends Thread {
@@ -36,7 +37,16 @@ class EchoHandler extends Thread {
 		this.clients = cl;
 	}
 
+	static private String getListOfClients(ConcurrentHashMap<Integer, Socket> clients){
+			String clientList=null;
+				for(int i = 1; i <= clients.size(); ++i){
+					clientList += String.valueOf(i + clients.get(i).getRemoteSocketAddress().toString() +'\n');
+				}
+			return clientList;
+		}
+
 	public void run () {
+
 		try {
 
 			BufferedReader in = new BufferedReader(
@@ -44,11 +54,22 @@ class EchoHandler extends Thread {
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
+				if (String.valueOf(inputLine) == "list"){
+					System.out.println("Here");
+					PrintWriter out = new PrintWriter(client.getOutputStream(), true);
+					out.println(getListOfClients(clients));
+				}
+
+
+/*
 				for(int i = 1; i <= clients.size(); ++i){
 					PrintWriter out = new PrintWriter(clients.get(i).getOutputStream(), true);                   
 					out.println(inputLine);
 					System.out.println("Just printed to client " + i);
 				}
+*/
+
+
 				System.out.println("client: " + inputLine);
 			}
 		}
@@ -59,5 +80,9 @@ class EchoHandler extends Thread {
 			try { client.close(); }
 			catch (Exception e ){ ; }
 		}
+
+
+
 	}
 }
+
