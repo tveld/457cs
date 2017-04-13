@@ -17,8 +17,8 @@ public class server_threaded {
 				handler.start();
 				System.out.println("Clients Connected: " + clientCnt);
 				System.out.println(
-					clients.get(clientCnt).getRemoteSocketAddress().toString()
-					);
+						clients.get(clientCnt).getRemoteSocketAddress().toString()
+						);
 			}
 		}
 		catch (Exception e) {
@@ -47,7 +47,38 @@ class EchoHandler extends Thread {
 					}
 				}
 			return clientList;
+	}
+	
+	/*****************************************************************************
+	 * Function used to broadcast the received message from a client to all 
+	 * connected clients that are detailed within the hashmap.
+	 *****************************************************************************/
+	static private void broadcastMessage(
+		ConcurrentHashMap<Integer, Socket> clients, String[] inputSplit){
+		for(int i = 1; i <= clients.size(); ++i){
+			PrintWriter out = null;
+			try {
+				out = new PrintWriter(clients.get(i).getOutputStream(), true);
+				String message = remakeBroadcast(inputSplit);
+				out.println(message);
+			} catch (IOException e) {
+				out.println(inputSplit);
+			}                   
+			
+			System.out.println("Just printed to client " + i);
 		}
+	}
+
+	static private String remakeBroadcast(String[] inputSplit){
+		String message="";
+		for(int i=0; i<inputSplit.length; i++){
+			if (i==0){
+				continue;
+			}
+			message += String.valueOf(inputSplit[i]) + " ";
+		}
+		return message;
+	}
 
 	static private boolean bootClient(int victim, ConcurrentHashMap<Integer, Socket> clients){
 		try{
@@ -72,7 +103,7 @@ class EchoHandler extends Thread {
 		try {
 
 			BufferedReader in = new BufferedReader(
-				new InputStreamReader(client.getInputStream()));
+					new InputStreamReader(client.getInputStream()));
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
@@ -91,6 +122,10 @@ class EchoHandler extends Thread {
 						out.println("Client does not exist");
 					}
 				}
+
+				else if (inputSplit[0].equals("broadcast")){
+					broadcastMessage(clients, inputSplit);
+				}
 /*
 				for(int i = 1; i <= clients.size(); ++i){
 					PrintWriter out = new PrintWriter(clients.get(i).getOutputStream(), true);                   
@@ -98,8 +133,6 @@ class EchoHandler extends Thread {
 					System.out.println("Just printed to client " + i);
 				}
 */
-
-
 				System.out.println("client: " + inputLine);
 			}
 		}
@@ -115,4 +148,3 @@ class EchoHandler extends Thread {
 
 	}
 }
-
