@@ -42,9 +42,30 @@ class EchoHandler extends Thread {
 				for(int i = 1; i <= clients.size(); ++i){
 					clientList += String.valueOf("ID: " + i + " ");
 					clientList += "IP: " + clients.get(i).getRemoteSocketAddress().toString();
+					if(i!=clients.size()){
+						clientList+= "\n";
+					}
 				}
 			return clientList;
 		}
+
+	static private boolean bootClient(int victim, ConcurrentHashMap<Integer, Socket> clients){
+		try{
+			if(clients.containsKey(victim)){
+				Socket socket = clients.get(victim);
+				PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+				out.println("Later nerd. You have been kicked");
+				socket.close();
+				clients.remove(victim);
+				return true;
+			} else {
+				return false;
+			}
+		} catch (IOException e){
+			e.printStackTrace();
+		}
+		return false;
+	}
 
 	public void run () {
 
@@ -55,12 +76,21 @@ class EchoHandler extends Thread {
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
-				if (inputLine.equals("list")){
-					PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
+				String inputSplit[] = inputLine.split("\\s+");
+				PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
+
+				if (inputSplit[0].equals("list")){
 					out.println(getListOfClients(clients));
 				}
 
-
+				else if (inputSplit[0].equals("boot")){
+					int victim = Integer.valueOf(inputSplit[1]);
+					if (bootClient(victim, clients)){
+						out.println("Client " + victim + " kicked");
+					} else {
+						out.println("Client does not exist");
+					}
+				}
 /*
 				for(int i = 1; i <= clients.size(); ++i){
 					PrintWriter out = new PrintWriter(clients.get(i).getOutputStream(), true);                   

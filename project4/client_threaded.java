@@ -49,7 +49,7 @@ class Listener extends Thread {
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
-				System.out.println("echo: " + inputLine);
+				System.out.println(inputLine);
 			}
 		}
 		catch (Exception e) {
