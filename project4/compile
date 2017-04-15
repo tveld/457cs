@@ -1,2 +1,1 @@
-javac server_threaded.java
-javac client_threaded.java
+javac server_threaded.java client_threaded.java cryptoblob.java

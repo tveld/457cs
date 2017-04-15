@@ -1,5 +1,7 @@
 import java.net.*;
 import java.io.*;
+import java.util.*;
+import java.security.*;
 import java.lang.Thread;
 import java.util.concurrent.*;
 
@@ -36,9 +38,24 @@ public class client_threaded {
 
 class Listener extends Thread {
 	Socket server;
+	Cryptoblob clientInfo = new Cryptoblob();
+	Cryptoblob serverKey = new Cryptoblob();
 
 	public Listener (Socket server) {
 		this.server = server;
+	}
+
+	static private void encryptionsetup(Socket server, Cryptoblob serverKey){
+		try {
+			ObjectInputStream objectIn = new ObjectInputStream(server.getInputStream());
+			Object obj = objectIn.readObject();
+			System.out.println("Read");
+			PublicKey serverPublic = (PublicKey) obj;
+			serverKey.setPublicKey(serverPublic);
+			System.out.println(serverKey.getPublicKey());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void run () {
@@ -49,10 +66,12 @@ class Listener extends Thread {
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
-				System.out.println(inputLine);
-			}
-		}
-		catch (Exception e) {
+				encryptionsetup(server, serverKey);
+
+
+
+				}
+		} catch (Exception e) {
 			System.err.println("Exception caught: client disconnected.");
 		}
 		finally {

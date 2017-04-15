@@ -1,12 +1,20 @@
 import java.io.*;
 import java.net.*;
+import java.util.*;
+import java.security.*;
 import java.lang.Thread;
-import java.util.Arrays;
 import java.util.concurrent.*;
 
 public class server_threaded {
 	public static void main (String[] args) {
+		HashMap<Integer, Cryptoblob> encryption_map = new HashMap<Integer, Cryptoblob>();
 		ConcurrentHashMap<Integer, Socket> clients = new ConcurrentHashMap<Integer, Socket>();
+		Cryptoblob server_blob = new Cryptoblob();
+		encryption_map.put(0, server_blob);
+		server_blob.setPrivateKey("RSApriv.der");
+		server_blob.setPublicKey("RSApub.der");
+		System.out.println(server_blob.getPublicKey());
+
 		try {
 			int clientCnt = 0;
 			ServerSocket server = new ServerSocket(2020);
@@ -14,7 +22,8 @@ public class server_threaded {
 				Socket client = server.accept();
 				++clientCnt;
 				clients.put(clientCnt, client);
-				EchoHandler handler = new EchoHandler(client, clients);
+				EchoHandler handler = new EchoHandler(client, clients, encryption_map);
+				encryptionSetup(client, server_blob);
 				handler.start();
 				System.out.println("Clients Connected: " + clientCnt);
 				System.out.println(
@@ -27,15 +36,35 @@ public class server_threaded {
 		}
 	}
 
+
+	private static void encryptionSetup(Socket client, Cryptoblob server_blob){
+		try{
+			PublicKey publicKey = server_blob.getPublicKey();
+			PrintWriter out = new PrintWriter(client.getOutputStream(), true);
+			ObjectOutputStream objectOut = new ObjectOutputStream(client.getOutputStream());
+			//out.println("encryptionsetup");
+			objectOut.writeObject(publicKey);
+			objectOut.flush();
+
+		} catch (Exception e){
+			e.printStackTrace();
+		}
+
+
+		
+	}
+
 }
 
 class EchoHandler extends Thread {
 	Socket client;
 	ConcurrentHashMap<Integer, Socket> clients;
+	HashMap<Integer, Cryptoblob> client_keys = new HashMap<Integer, Cryptoblob>();
 
-	public EchoHandler (Socket client, ConcurrentHashMap<Integer, Socket> cl) {
+	public EchoHandler (Socket client, ConcurrentHashMap<Integer, Socket> cl, HashMap<Integer, Cryptoblob> ck) {
 		this.client = client;
 		this.clients = cl;
+		this.client_keys = ck;
 	}
 
 	static private String getListOfClients(ConcurrentHashMap<Integer, Socket> clients){
@@ -52,7 +81,7 @@ class EchoHandler extends Thread {
 	
 	/*****************************************************************************
 	 * Function used to broadcast the received message from a client to all 
-	 * connected clients that are detailed within the hashmap.
+	 * connected clients that are detailed within the hashMap.
 	 *****************************************************************************/
 	static private void broadcastMessage(
 		ConcurrentHashMap<Integer, Socket> clients, String[] inputSplit){
@@ -86,7 +115,7 @@ class EchoHandler extends Thread {
 			if(clients.containsKey(victim)){
 				Socket socket = clients.get(victim);
 				PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-				out.println("Later nerd. You have been kicked");
+				out.println("You have been kicked");
 				socket.close();
 				clients.remove(victim);
 				return true;
