@@ -1,7 +1,10 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import javax.crypto.*;
+import javax.crypto.spec.*;
 import java.security.*;
+import java.security.spec.*;
 import java.lang.Thread;
 import java.util.concurrent.*;
 
@@ -54,6 +57,27 @@ class Listener extends Thread {
 			System.out.println("Read");
 			PublicKey serverPublic = (PublicKey) obj;
 			serverKey.setPublicKey(serverPublic);
+
+			SecretKey symmetricKey = serverKey.generateAESKey();
+			byte encryptedsecret[] = serverKey.RSAEncrypt(serverKey.getPublicKey().getEncoded());
+			SecureRandom rand = new SecureRandom();
+			byte ivbytes[] = new byte[16];
+			rand.nextBytes(ivbytes);
+			IvParameterSpec iv = new IvParameterSpec(ivbytes);
+			byte cipher[] = serverKey.encrypt(symmetricKey.getEncoded(), symmetricKey, iv);
+
+			OutputStream out = server.getOutputStream(); 
+    		DataOutputStream dos = new DataOutputStream(out);
+    		out.write(cipher.length);
+    		System.out.println("IV: " + ivbytes);
+    		System.out.println("Cipher: " + cipher);
+    		dos.write(cipher, 0, cipher.length);
+    		dos.write(ivbytes, 0, ivbytes.length);
+
+    		dos.flush();
+
+    		System.out.println("Matches: " + symmetricKey.getEncoded());
+
 			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -75,7 +99,6 @@ class Listener extends Thread {
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
 				
-				System.out.println(serverKey.getPublicKey());
 
 
 				}

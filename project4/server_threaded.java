@@ -1,7 +1,10 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import javax.crypto.*;
+import javax.crypto.spec.*;
 import java.security.*;
+import java.security.spec.*;
 import java.lang.Thread;
 import java.util.concurrent.*;
 
@@ -13,7 +16,6 @@ public class server_threaded {
 		encryption_map.put(0, server_blob);
 		server_blob.setPrivateKey("RSApriv.der");
 		server_blob.setPublicKey("RSApub.der");
-		System.out.println(server_blob.getPublicKey());
 
 		try {
 			int clientCnt = 0;
@@ -58,16 +60,35 @@ class EchoHandler extends Thread {
 			PublicKey publicKey = server_blob.getPublicKey();
 			PrintWriter out = new PrintWriter(client.getOutputStream(), true);
 			ObjectOutputStream objectOut = new ObjectOutputStream(client.getOutputStream());
-			//out.println("encryptionsetup");
 			objectOut.writeObject(publicKey);
 			objectOut.flush();
+			objectOut.close();
+
+			InputStream in = client.getInputStream();
+    		DataInputStream dis = new DataInputStream(in);
+    		byte ivbytes[] = new byte[16];
+    		int cipher_length;
+    		dis.readFully(cipher_length);
+    		System.out.println("Length: " + cipher_length);
+    		byte cipher[] = new byte[cipher_length];
+    		dis.readFully(cipher);
+    		dis.readFully(ivbytes);
+
+    		byte decryptedsecret[] = server_blob.RSADecrypt(cipher);
+    		SecretKey symmetricClientKey = new SecretKeySpec(decryptedsecret,"AES");
+    		
+    		IvParameterSpec iv = new IvParameterSpec(ivbytes);
+
+    		byte decryptedplaintext[] = server_blob.decrypt(cipher, symmetricClientKey, iv);
+
+    		System.out.println("IV: " + iv);
+    		System.out.println("Cipher: " + cipher);
+    		System.out.println("Secret Key: " + decryptedplaintext);
 
 		} catch (Exception e){
 			e.printStackTrace();
 		}
 
-
-		
 	}
 
 	static private String getListOfClients(ConcurrentHashMap<Integer, Socket> clients){
