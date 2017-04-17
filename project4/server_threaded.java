@@ -23,7 +23,6 @@ public class server_threaded {
 				++clientCnt;
 				clients.put(clientCnt, client);
 				EchoHandler handler = new EchoHandler(client, clients, encryption_map);
-				encryptionSetup(client, server_blob);
 				handler.start();
 				System.out.println("Clients Connected: " + clientCnt);
 				System.out.println(
@@ -36,6 +35,23 @@ public class server_threaded {
 		}
 	}
 
+
+}
+
+class EchoHandler extends Thread {
+	Socket client;
+	ConcurrentHashMap<Integer, Socket> clients;
+	HashMap<Integer, Cryptoblob> client_keys = new HashMap<Integer, Cryptoblob>();
+	Cryptoblob server_blob;
+	Boolean encryptionStatus;
+
+	public EchoHandler (Socket client, ConcurrentHashMap<Integer, Socket> cl, HashMap<Integer, Cryptoblob> ck) {
+		this.client = client;
+		this.clients = cl;
+		this.client_keys = ck;
+		this.encryptionStatus = false;
+		this.server_blob = client_keys.get(0);
+	}
 
 	private static void encryptionSetup(Socket client, Cryptoblob server_blob){
 		try{
@@ -52,19 +68,6 @@ public class server_threaded {
 
 
 		
-	}
-
-}
-
-class EchoHandler extends Thread {
-	Socket client;
-	ConcurrentHashMap<Integer, Socket> clients;
-	HashMap<Integer, Cryptoblob> client_keys = new HashMap<Integer, Cryptoblob>();
-
-	public EchoHandler (Socket client, ConcurrentHashMap<Integer, Socket> cl, HashMap<Integer, Cryptoblob> ck) {
-		this.client = client;
-		this.clients = cl;
-		this.client_keys = ck;
 	}
 
 	static private String getListOfClients(ConcurrentHashMap<Integer, Socket> clients){
@@ -153,6 +156,11 @@ class EchoHandler extends Thread {
 
 
 	public void run () {
+
+		if (!encryptionStatus){
+			encryptionSetup(client, server_blob);
+			encryptionStatus = true;
+		}
 
 		try {
 

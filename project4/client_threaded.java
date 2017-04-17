@@ -40,9 +40,11 @@ class Listener extends Thread {
 	Socket server;
 	Cryptoblob clientInfo = new Cryptoblob();
 	Cryptoblob serverKey = new Cryptoblob();
+	Boolean encryptionStatus;
 
 	public Listener (Socket server) {
 		this.server = server;
+		this.encryptionStatus=false;
 	}
 
 	static private void encryptionsetup(Socket server, Cryptoblob serverKey){
@@ -52,13 +54,19 @@ class Listener extends Thread {
 			System.out.println("Read");
 			PublicKey serverPublic = (PublicKey) obj;
 			serverKey.setPublicKey(serverPublic);
-			System.out.println(serverKey.getPublicKey());
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
 	public void run () {
+
+		if(!encryptionStatus){
+			encryptionsetup(server, serverKey);
+			encryptionStatus = true;
+		}
+
 		try {
 			BufferedReader in =
 			new BufferedReader(
@@ -66,8 +74,8 @@ class Listener extends Thread {
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
-				encryptionsetup(server, serverKey);
-
+				
+				System.out.println(serverKey.getPublicKey());
 
 
 				}
