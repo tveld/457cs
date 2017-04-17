@@ -62,13 +62,11 @@ class EchoHandler extends Thread {
 			ObjectOutputStream objectOut = new ObjectOutputStream(client.getOutputStream());
 			objectOut.writeObject(publicKey);
 			objectOut.flush();
-			objectOut.close();
 
 			InputStream in = client.getInputStream();
     		DataInputStream dis = new DataInputStream(in);
     		byte ivbytes[] = new byte[16];
-    		int cipher_length;
-    		dis.readFully(cipher_length);
+    		int cipher_length = dis.readChar();
     		System.out.println("Length: " + cipher_length);
     		byte cipher[] = new byte[cipher_length];
     		dis.readFully(cipher);
