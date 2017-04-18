@@ -46,6 +46,8 @@ class EchoHandler extends Thread {
 	HashMap<Integer, Cryptoblob> client_keys = new HashMap<Integer, Cryptoblob>();
 	Cryptoblob server_blob;
 	Boolean encryptionStatus;
+	SecretKey sym;
+	IvParameterSpec iv;
 
 	public EchoHandler (Socket client, ConcurrentHashMap<Integer, Socket> cl, HashMap<Integer, Cryptoblob> ck) {
 		this.client = client;
@@ -55,7 +57,7 @@ class EchoHandler extends Thread {
 		this.server_blob = client_keys.get(0);
 	}
 
-	private static void encryptionSetup(Socket client, Cryptoblob server_blob){
+	private static void encryptionSetup(Socket client, Cryptoblob server_blob,SecretKey sym,IvParameterSpec iv){
 		try{
 			PublicKey publicKey = server_blob.getPublicKey();
 			PrintWriter out = new PrintWriter(client.getOutputStream(), true);
@@ -74,24 +76,40 @@ class EchoHandler extends Thread {
             for(int i = 0; i < 16; ++i){
                 ivbytes[i] = rec[i];
             }
+						
+						System.out.println("IV Encrypted bytes");
+
+						for(int i = 0; i < 16; ++i){
+               System.out.print(ivbytes[i]);     
+            }
+
 
             // get client symmetric
             for(int i = 16; i < 80; ++i){
                clientSymmetric[i - 16] = rec[i];
             }
 
+						System.out.println("\n\nClient Symmetric Encrypted bytes");
+
+						for(int i = 0; i < 64; ++i){
+               System.out.print(clientSymmetric[i]);     
+            }
+
 
     		decryptedsecret = server_blob.RSADecrypt(clientSymmetric);
-    		SecretKey originalKey = new SecretKeySpec(decryptedsecret, 0, decryptedsecret.length, "AES");
+    		sym = new SecretKeySpec(decryptedsecret, 0, decryptedsecret.length, "AES");
+				iv = new IvParameterSpec(ivbytes);
+				
 
-    		byte ivtest[] = {16, 13, 65, 20, 48, 102, 72,  15, 25, 18,  26, 64, 16,  50, 38, 17};
-    		IvParameterSpec iv = new IvParameterSpec(ivtest);
-    		String x = "Hello";
-			byte x1[] = x.getBytes();
-    		byte message[] = server_blob.encrypt(x1, originalKey, iv);
-    		byte finaltest[] = server_blob.decrypt(message, originalKey, iv);
+				// testing
+
+				String x = "Hello";
+				byte x1[] = x.getBytes();
+    		byte message[] = server_blob.encrypt(x1, sym, iv);
+    		byte finaltest[] = server_blob.decrypt(message, sym, iv);
     		String s = new String(finaltest);
-    		System.out.println(s);
+    		System.out.println("\n\n" + s);
+    		
 
     		/*
     		String cipher = ""; 
@@ -202,23 +220,73 @@ class EchoHandler extends Thread {
 	}
 
 
+	private String receiveEncrypted(){
+		try {
+			//String input = "";
+			//byte rec[] = new byte[16];
+			//yte output[] = new byte[16];
+			String input = "Yo";
+			
+			String testing = "test";
+			byte t[] = testing.getBytes();
+			
+
+  		byte tenc[] = server_blob.encrypt(t, sym, iv);
+
+			for(int i = 0; i < t.length; ++i){
+				System.out.println("Byte " + i + ": " +tenc[i]);
+			}
+
+  		//byte testfinal[] = server_blob.decrypt(tenc, sym, iv);
+  		//String s = new String(testfinal);
+  		//System.out.println(s);
+			
 
 
+
+			
+			System.out.println("Waiting to recieve encrypted text");
+
+		  InputStream in = client.getInputStream();
+			/*
+    	DataInputStream dis = new DataInputStream(in);
+			dis.readFully(rec);
+
+			System.out.println("Read in encrypted text");
+
+			output = server_blob.decrypt(rec, this.sym, this.iv);
+
+			String tmp = new String(output);
+			input = tmp;
+			*/
+			return input;
+		}
+		catch (Exception e) {
+			System.err.println("Exception caught: client disconnected.");
+			return null;
+		}
+		finally {
+			try { client.close(); }
+			catch (Exception e ){ ; }
+		}
+
+	}
 
 	public void run () {
 
 		if (!encryptionStatus){
-			encryptionSetup(client, server_blob);
+			encryptionSetup(client, server_blob, sym, iv);
 			encryptionStatus = true;
 		}
 
 		try {
 
-			BufferedReader in = new BufferedReader(
-					new InputStreamReader(client.getInputStream()));
-
 			String inputLine;
-			while ((inputLine = in.readLine()) != null) {
+			while (true){
+				
+				System.out.println("Before recieve encrypted");
+				inputLine = receiveEncrypted();
+				System.out.println("Input Line " + inputLine);
 				String inputSplit[] = inputLine.split("\\s+");
 				PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
 

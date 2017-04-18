@@ -10,13 +10,48 @@ import java.util.concurrent.*;
 
 public class client_threaded {
 
+	public static void sendEncrypted(Socket server, String output, SecretKey sec, IvParameterSpec iv){
+		try {
+		
+			Cryptoblob enc = new Cryptoblob();
+			byte send[] = output.getBytes();
+    	byte message[] = enc.encrypt(send, sec, iv);
+
+			OutputStream out = server.getOutputStream(); 
+			DataOutputStream dos = new DataOutputStream(out);
+
+			System.out.println("Message size: " + message.length);
+			dos.write(message, 0, message.length);
+			dos.flush();
+			System.out.println("Attempting to send " + output);
+
+			String testing = "test";
+			byte t[] = testing.getBytes();
+  		byte tenc[] = enc.encrypt(t, sec, iv);
+
+			for(int i = 0; i < t.length; ++i){
+				System.out.println("Byte " + i + ": " +tenc[i]);
+			}
+
+  		byte testfinal[] = enc.decrypt(tenc, sec, iv);
+  		String s = new String(testfinal);
+  		System.out.println(s);
+
+
+
+			return;
+
+		} catch (Exception e){
+			e.printStackTrace();
+			return;
+		}
+	}
 
 	public static void main(String [] args) throws IOException {
 
 		try {
 			Socket echoSocket = new Socket("127.0.0.1", 2020);
-			PrintWriter out =
-			new PrintWriter(echoSocket.getOutputStream(), true);
+
 
 			BufferedReader stdIn =
 			new BufferedReader(
@@ -34,7 +69,7 @@ public class client_threaded {
 
 			String userInput;
 			while ((userInput = stdIn.readLine()) != null) {
-				out.println(userInput);
+				sendEncrypted(echoSocket, userInput, handler.sec, handler.iv);
 			}
 			
 		} catch (Exception e){
@@ -51,6 +86,8 @@ class Listener extends Thread {
 	Cryptoblob clientInfo = new Cryptoblob();
 	Cryptoblob serverKey = new Cryptoblob();
 	Boolean encryptionStatus;
+	SecretKey sec;
+	IvParameterSpec iv;
 
 	public Listener (Socket server) {
 		this.server = server;
@@ -70,28 +107,36 @@ class Listener extends Thread {
 			Socket server = this.server;
 			Cryptoblob serverKey = this.serverKey;
 			serverKey.setPublicKey(serverPublic);
-			serverKey.setPrivateKey("RSApriv.der");
 
 			SecretKey symmetricKey = serverKey.generateAESKey();
 			byte encryptedsecret[] = serverKey.RSAEncrypt(symmetricKey.getEncoded());
 		    System.out.println("Encrypted size: " + encryptedsecret.length);
 	
             SecureRandom rand = new SecureRandom();
-			byte ivfinal[] = new byte[16];
-			rand.nextBytes(ivfinal);
+						byte ivbytes[] = new byte[16];
+						rand.nextBytes(ivbytes);
+
+						System.out.println("IV Encrypted bytes");
 
             for(int i = 0; i < 16; ++i){
-               System.out.print(ivfinal[i]);     
+               System.out.print(ivbytes[i]);     
             }
 
-            System.out.println("Size: " + ivfinal.length);
+						System.out.println("\n\nClient Symmetric Encrypted bytes");
+
+						for(int i = 0; i < 64; ++i){
+               System.out.print(encryptedsecret[i]);     
+            }
+
+
+            System.out.println("\n\nSize: " + ivbytes.length);
 
             // join the arrays
             byte send[] = new byte[80];
     	    
             // store iv
             for(int i = 0; i < 16; ++i){
-                send[i] = ivfinal[i];
+                send[i] = ivbytes[i];
             }	
 
             // get client symmetric
@@ -100,22 +145,21 @@ class Listener extends Thread {
             }
 
             OutputStream out = server.getOutputStream(); 
-    		DataOutputStream dos = new DataOutputStream(out);
-    		dos.write(send, 0, 80);
-    		dos.flush();
+						DataOutputStream dos = new DataOutputStream(out);
+						dos.write(send, 0, 80);
+						dos.flush();
 
-    		//SecureRandom rand = new SecureRandom();
-			byte ivbytes[] = {16, 13, 65, 20, 48, 102, 72,  15, 25, 18,  26, 64, 16,  50, 38, 17};
-			//rand.nextBytes(ivbytes);
-			IvParameterSpec iv = new IvParameterSpec(ivbytes);
+						iv = new IvParameterSpec(ivbytes);
+						sec = symmetricKey;
 
-			String x = "Hello";
-			byte x1[] = x.getBytes();
-    		byte message[] = serverKey.encrypt(x1, symmetricKey, iv);
-    		byte finaltest[] = serverKey.decrypt(message, symmetricKey, iv);
-    		String s = new String(finaltest);
-    		System.out.println(s);
-    	
+						String x = "Hello";
+						byte x1[] = x.getBytes();
+						byte message[] = serverKey.encrypt(x1, symmetricKey, iv);
+						byte finaltest[] = serverKey.decrypt(message, symmetricKey, iv);
+						String s = new String(finaltest);
+						System.out.println(s);
+						
+
 			/*
 			SecureRandom rand = new SecureRandom();
 			byte ivbytes[] = new byte[16];
