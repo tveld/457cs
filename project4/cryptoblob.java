@@ -3,7 +3,7 @@ import javax.crypto.*;
 import javax.crypto.spec.*;
 import java.security.*;
 import java.security.spec.*;
-import javax.xml.bind.DatatypeConverter;
+//import javax.xml.bind.DatatypeConverter;
 
 class Cryptoblob{
 	private PrivateKey privKey;
@@ -20,7 +20,7 @@ class Cryptoblob{
 		IvParameterSpec iv = new IvParameterSpec(ivbytes);
 		String plaintext = "This is a test string to encrypt";
 		byte ciphertext[] = c.encrypt(plaintext.getBytes(),s,iv);
-		System.out.printf("CipherText: %s%n",DatatypeConverter.printHexBinary(ciphertext));
+		//System.out.printf("CipherText: %s%n",DatatypeConverter.printHexBinary(ciphertext));
 		byte decryptedsecret[] = c.RSADecrypt(encryptedsecret);
 		SecretKey ds = new SecretKeySpec(decryptedsecret,"AES");
 		byte decryptedplaintext[] = c.decrypt(ciphertext,ds,iv);

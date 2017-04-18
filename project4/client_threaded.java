@@ -74,10 +74,34 @@ class Listener extends Thread {
 
 			SecretKey symmetricKey = serverKey.generateAESKey();
 			byte encryptedsecret[] = serverKey.RSAEncrypt(symmetricKey.getEncoded());
+		    System.out.println("Encrypted size: " + encryptedsecret.length);
+	
+            SecureRandom rand = new SecureRandom();
+			byte ivfinal[] = new byte[16];
+			rand.nextBytes(ivfinal);
 
-			OutputStream out = server.getOutputStream(); 
+            for(int i = 0; i < 16; ++i){
+               System.out.print(ivfinal[i]);     
+            }
+
+            System.out.println("Size: " + ivfinal.length);
+
+            // join the arrays
+            byte send[] = new byte[80];
+    	    
+            // store iv
+            for(int i = 0; i < 16; ++i){
+                send[i] = ivfinal[i];
+            }	
+
+            // get client symmetric
+            for(int i = 16; i < 80; ++i){
+                send[i] = encryptedsecret[i-16];
+            }
+
+            OutputStream out = server.getOutputStream(); 
     		DataOutputStream dos = new DataOutputStream(out);
-    		dos.write(encryptedsecret, 0, 64);
+    		dos.write(send, 0, 80);
     		dos.flush();
 
     		//SecureRandom rand = new SecureRandom();

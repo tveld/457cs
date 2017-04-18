@@ -65,14 +65,27 @@ class EchoHandler extends Thread {
 
 			InputStream in = client.getInputStream();
     		DataInputStream dis = new DataInputStream(in);
-    		byte clientSymmetric[] = new byte[64];
+            byte rec[] = new byte[80];
+    		byte ivbytes[] = new byte[16];
+            byte clientSymmetric[] = new byte[64];
     		byte decryptedsecret[] = new byte[128];
-    		dis.readFully(clientSymmetric);
+    		dis.readFully(rec);
+            //get iv
+            for(int i = 0; i < 16; ++i){
+                ivbytes[i] = rec[i];
+            }
+
+            // get client symmetric
+            for(int i = 16; i < 80; ++i){
+               clientSymmetric[i - 16] = rec[i];
+            }
+
+
     		decryptedsecret = server_blob.RSADecrypt(clientSymmetric);
     		SecretKey originalKey = new SecretKeySpec(decryptedsecret, 0, decryptedsecret.length, "AES");
 
-    		byte ivbytes[] = {16, 13, 65, 20, 48, 102, 72,  15, 25, 18,  26, 64, 16,  50, 38, 17};
-    		IvParameterSpec iv = new IvParameterSpec(ivbytes);
+    		byte ivtest[] = {16, 13, 65, 20, 48, 102, 72,  15, 25, 18,  26, 64, 16,  50, 38, 17};
+    		IvParameterSpec iv = new IvParameterSpec(ivtest);
     		String x = "Hello";
 			byte x1[] = x.getBytes();
     		byte message[] = server_blob.encrypt(x1, originalKey, iv);
