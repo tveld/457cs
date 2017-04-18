@@ -65,23 +65,41 @@ class EchoHandler extends Thread {
 
 			InputStream in = client.getInputStream();
     		DataInputStream dis = new DataInputStream(in);
-    		byte ivbytes[] = new byte[16];
-    		int cipher_length = dis.readChar();
-    		System.out.println("Length: " + cipher_length);
-    		byte cipher[] = new byte[cipher_length];
-    		dis.readFully(cipher);
-    		dis.readFully(ivbytes);
+    		byte clientSymmetric[] = new byte[64];
+    		byte decryptedsecret[] = new byte[128];
+    		dis.readFully(clientSymmetric);
+    		decryptedsecret = server_blob.RSADecrypt(clientSymmetric);
+    		SecretKey originalKey = new SecretKeySpec(decryptedsecret, 0, decryptedsecret.length, "AES");
 
-    		byte decryptedsecret[] = server_blob.RSADecrypt(cipher);
+    		byte ivbytes[] = {16, 13, 65, 20, 48, 102, 72,  15, 25, 18,  26, 64, 16,  50, 38, 17};
+    		IvParameterSpec iv = new IvParameterSpec(ivbytes);
+    		String x = "Hello";
+			byte x1[] = x.getBytes();
+    		byte message[] = server_blob.encrypt(x1, originalKey, iv);
+    		byte finaltest[] = server_blob.decrypt(message, originalKey, iv);
+    		String s = new String(finaltest);
+    		System.out.println(s);
+
+    		/*
+    		String cipher = ""; 
+    		String ivbytes = "";
+    		System.out.println("Listening");
+    		if(dis.available() > 0){
+    			cipher = dis.readUTF();
+    			ivbytes = dis.readUTF();
+    		}
+
+    		byte decryptedsecret[] = server_blob.RSADecrypt(cipher.getBytes());
     		SecretKey symmetricClientKey = new SecretKeySpec(decryptedsecret,"AES");
     		
-    		IvParameterSpec iv = new IvParameterSpec(ivbytes);
+    		IvParameterSpec iv = new IvParameterSpec(ivbytes.getBytes());
 
-    		byte decryptedplaintext[] = server_blob.decrypt(cipher, symmetricClientKey, iv);
+    		byte decryptedplaintext[] = server_blob.decrypt(cipher.getBytes(), symmetricClientKey, iv);
 
     		System.out.println("IV: " + iv);
     		System.out.println("Cipher: " + cipher);
     		System.out.println("Secret Key: " + decryptedplaintext);
+    		*/
 
 		} catch (Exception e){
 			e.printStackTrace();

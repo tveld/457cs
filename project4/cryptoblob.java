@@ -63,6 +63,7 @@ class Cryptoblob{
 			return plaintext;
 		}catch(Exception e){
 			System.out.println("RSA Decrypt Exception");
+			e.printStackTrace();
 			System.exit(1);
 			return null;
 		}
@@ -75,6 +76,7 @@ class Cryptoblob{
 			return ciphertext;
 		}catch(Exception e){
 			System.out.println("RSA Encrypt Exception");
+			e.printStackTrace();
 			System.exit(1);
 			return null;
 		}

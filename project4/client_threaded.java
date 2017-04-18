@@ -23,6 +23,13 @@ public class client_threaded {
 				new InputStreamReader(System.in));
 
             Listener handler = new Listener(echoSocket);
+            ObjectInputStream objectIn = new ObjectInputStream(echoSocket.getInputStream());
+            Object obj = objectIn.readObject();
+            PublicKey key = (PublicKey) obj;
+            if(!handler.getEncryptionStatus()){
+            	handler.encryptionsetup(key);
+				handler.setEncryptionStatus(true);
+            }
             handler.start();
 
 			String userInput;
@@ -50,34 +57,60 @@ class Listener extends Thread {
 		this.encryptionStatus=false;
 	}
 
-	static private void encryptionsetup(Socket server, Cryptoblob serverKey){
+	public void setEncryptionStatus(Boolean status){
+		this.encryptionStatus = status;
+	}
+
+	public Boolean getEncryptionStatus(){
+		return this.encryptionStatus;
+	}
+
+	public void encryptionsetup(PublicKey serverPublic){
 		try {
-			ObjectInputStream objectIn = new ObjectInputStream(server.getInputStream());
-			Object obj = objectIn.readObject();
-			System.out.println("Read");
-			PublicKey serverPublic = (PublicKey) obj;
+			Socket server = this.server;
+			Cryptoblob serverKey = this.serverKey;
 			serverKey.setPublicKey(serverPublic);
+			serverKey.setPrivateKey("RSApriv.der");
 
 			SecretKey symmetricKey = serverKey.generateAESKey();
-			byte encryptedsecret[] = serverKey.RSAEncrypt(serverKey.getPublicKey().getEncoded());
+			byte encryptedsecret[] = serverKey.RSAEncrypt(symmetricKey.getEncoded());
+
+			OutputStream out = server.getOutputStream(); 
+    		DataOutputStream dos = new DataOutputStream(out);
+    		dos.write(encryptedsecret, 0, 64);
+    		dos.flush();
+
+    		//SecureRandom rand = new SecureRandom();
+			byte ivbytes[] = {16, 13, 65, 20, 48, 102, 72,  15, 25, 18,  26, 64, 16,  50, 38, 17};
+			//rand.nextBytes(ivbytes);
+			IvParameterSpec iv = new IvParameterSpec(ivbytes);
+
+			String x = "Hello";
+			byte x1[] = x.getBytes();
+    		byte message[] = serverKey.encrypt(x1, symmetricKey, iv);
+    		byte finaltest[] = serverKey.decrypt(message, symmetricKey, iv);
+    		String s = new String(finaltest);
+    		System.out.println(s);
+    	
+			/*
 			SecureRandom rand = new SecureRandom();
 			byte ivbytes[] = new byte[16];
 			rand.nextBytes(ivbytes);
 			IvParameterSpec iv = new IvParameterSpec(ivbytes);
 			byte cipher[] = serverKey.encrypt(symmetricKey.getEncoded(), symmetricKey, iv);
 
-			OutputStream out = server.getOutputStream(); 
-    		DataOutputStream dos = new DataOutputStream(out);
-    		out.write(cipher.length);
-    		System.out.println("IV: " + ivbytes);
-    		System.out.println("Cipher: " + cipher);
-    		dos.write(cipher, 0, cipher.length);
-    		dos.write(ivbytes, 0, ivbytes.length);
+    		byte[] encoded = Base64.getEncoder().encode(cipher.getBytes());
+			dos.write(new String(encoded));   // Outputs "SGVsbG8="
 
+    		System.out.println(c);
+    		System.out.println("Trying a write");
+       		dos.writeUTF(c);
+       		dos.flush();
+    		dos.writeUTF(ivString);
     		dos.flush();
 
     		System.out.println("Matches: " + symmetricKey.getEncoded());
-
+			*/
 			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -86,12 +119,9 @@ class Listener extends Thread {
 
 	public void run () {
 
-		if(!encryptionStatus){
-			encryptionsetup(server, serverKey);
-			encryptionStatus = true;
-		}
-
 		try {
+			
+
 			BufferedReader in =
 			new BufferedReader(
 				new InputStreamReader(server.getInputStream()));
