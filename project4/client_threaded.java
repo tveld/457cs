@@ -10,43 +10,6 @@ import java.util.concurrent.*;
 
 public class client_threaded {
 
-	public static void sendEncrypted(Socket server, String output, SecretKey sec, IvParameterSpec iv){
-		try {
-		
-			Cryptoblob enc = new Cryptoblob();
-			byte send[] = output.getBytes();
-    	byte message[] = enc.encrypt(send, sec, iv);
-
-			OutputStream out = server.getOutputStream(); 
-			DataOutputStream dos = new DataOutputStream(out);
-
-			System.out.println("Message size: " + message.length);
-			dos.write(message, 0, message.length);
-			dos.flush();
-			System.out.println("Attempting to send " + output);
-
-			String testing = "test";
-			byte t[] = testing.getBytes();
-  		byte tenc[] = enc.encrypt(t, sec, iv);
-
-			for(int i = 0; i < t.length; ++i){
-				System.out.println("Byte " + i + ": " +tenc[i]);
-			}
-
-  		byte testfinal[] = enc.decrypt(tenc, sec, iv);
-  		String s = new String(testfinal);
-  		System.out.println(s);
-
-
-
-			return;
-
-		} catch (Exception e){
-			e.printStackTrace();
-			return;
-		}
-	}
-
 	public static void main(String [] args) throws IOException {
 
 		try {
@@ -69,8 +32,8 @@ public class client_threaded {
 
 			String userInput;
 			while ((userInput = stdIn.readLine()) != null) {
-				sendEncrypted(echoSocket, userInput, handler.sec, handler.iv);
-			}
+                handler.sendPacket(userInput);			
+            }
 			
 		} catch (Exception e){
 			e.printStackTrace();
@@ -113,10 +76,10 @@ class Listener extends Thread {
 		    System.out.println("Encrypted size: " + encryptedsecret.length);
 	
             SecureRandom rand = new SecureRandom();
-						byte ivbytes[] = new byte[16];
-						rand.nextBytes(ivbytes);
+			byte ivbytes[] = new byte[16];
+			rand.nextBytes(ivbytes);
 
-						System.out.println("IV Encrypted bytes");
+			System.out.println("IV Encrypted bytes");
 
             for(int i = 0; i < 16; ++i){
                System.out.print(ivbytes[i]);     
@@ -145,19 +108,19 @@ class Listener extends Thread {
             }
 
             OutputStream out = server.getOutputStream(); 
-						DataOutputStream dos = new DataOutputStream(out);
-						dos.write(send, 0, 80);
-						dos.flush();
+			DataOutputStream dos = new DataOutputStream(out);
+			dos.write(send, 0, 80);
+			dos.flush();
 
-						iv = new IvParameterSpec(ivbytes);
-						sec = symmetricKey;
+			iv = new IvParameterSpec(ivbytes);
+			sec = symmetricKey;
 
-						String x = "Hello";
-						byte x1[] = x.getBytes();
-						byte message[] = serverKey.encrypt(x1, symmetricKey, iv);
-						byte finaltest[] = serverKey.decrypt(message, symmetricKey, iv);
-						String s = new String(finaltest);
-						System.out.println(s);
+			String x = "Hello";
+			byte x1[] = x.getBytes();
+			byte message[] = serverKey.encrypt(x1, symmetricKey, iv);
+			byte finaltest[] = serverKey.decrypt(message, symmetricKey, iv);
+			String s = new String(finaltest);
+			System.out.println(s);
 						
 
 			/*
@@ -185,6 +148,20 @@ class Listener extends Thread {
 		}
 	}
 
+    public void sendPacket(String sendMe){
+        try {
+            System.out.println("Attempting : " + sendMe);
+            byte[] plainMess = sendMe.getBytes();
+            byte[] message = serverKey.encrypt(plainMess, sec, iv);
+            OutputStream out = server.getOutputStream();
+            DataOutputStream dos = new DataOutputStream(out);
+            dos.write(message,0, message.length);
+            dos.flush();
+        } catch(Exception e){
+            
+        }
+    }
+
 	public void run () {
 
 		try {
@@ -192,14 +169,14 @@ class Listener extends Thread {
 
 			BufferedReader in =
 			new BufferedReader(
-				new InputStreamReader(server.getInputStream()));
+			new InputStreamReader(server.getInputStream()));
 
 			String inputLine;
 			while ((inputLine = in.readLine()) != null) {
 				
 
 
-				}
+			}
 		} catch (Exception e) {
 			System.err.println("Exception caught: client disconnected.");
 		}

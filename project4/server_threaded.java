@@ -10,8 +10,9 @@ import java.util.concurrent.*;
 
 public class server_threaded {
 	public static void main (String[] args) {
-		HashMap<Integer, Cryptoblob> encryption_map = new HashMap<Integer, Cryptoblob>();
+		ConcurrentHashMap<Integer, Cryptoblob> encryption_map = new ConcurrentHashMap<Integer, Cryptoblob>();
 		ConcurrentHashMap<Integer, Socket> clients = new ConcurrentHashMap<Integer, Socket>();
+		ConcurrentHashMap<Integer, SecretKey> symKey = new ConcurrentHashMap<Integer, SecretKey>();
 		Cryptoblob server_blob = new Cryptoblob();
 		encryption_map.put(0, server_blob);
 		server_blob.setPrivateKey("RSApriv.der");
@@ -24,11 +25,11 @@ public class server_threaded {
 				Socket client = server.accept();
 				++clientCnt;
 				clients.put(clientCnt, client);
-				EchoHandler handler = new EchoHandler(client, clients, encryption_map);
+				EchoHandler handler = new EchoHandler(clientCnt, client, clients, encryption_map, symKey);
 				handler.start();
 				System.out.println("Clients Connected: " + clientCnt);
 				System.out.println(
-						clients.get(clientCnt).getRemoteSocketAddress().toString()
+				clients.get(clientCnt).getRemoteSocketAddress().toString()
 						);
 			}
 		}
@@ -41,26 +42,31 @@ public class server_threaded {
 }
 
 class EchoHandler extends Thread {
-	Socket client;
+	int clientId;
+    Socket client;
 	ConcurrentHashMap<Integer, Socket> clients;
-	HashMap<Integer, Cryptoblob> client_keys = new HashMap<Integer, Cryptoblob>();
-	Cryptoblob server_blob;
+	ConcurrentHashMap<Integer, Cryptoblob> client_keys = new ConcurrentHashMap<Integer, Cryptoblob>();
+	ConcurrentHashMap<Integer, SecretKey> symKey = new ConcurrentHashMap<Integer, SecretKey>();
+	
+    Cryptoblob server_blob;
 	Boolean encryptionStatus;
 	SecretKey sym;
 	IvParameterSpec iv;
 
-	public EchoHandler (Socket client, ConcurrentHashMap<Integer, Socket> cl, HashMap<Integer, Cryptoblob> ck) {
-		this.client = client;
+	public EchoHandler (int clientId, Socket client, ConcurrentHashMap<Integer, Socket> cl, ConcurrentHashMap<Integer, Cryptoblob> ck, ConcurrentHashMap<Integer, SecretKey> symKey) {
+		this.clientId = clientId;
+        this.client = client;
 		this.clients = cl;
 		this.client_keys = ck;
 		this.encryptionStatus = false;
 		this.server_blob = client_keys.get(0);
-	}
+	    this.symKey = symKey;
+    }
 
-	private static void encryptionSetup(Socket client, Cryptoblob server_blob,SecretKey sym,IvParameterSpec iv){
+	private void encryptionSetup(){
 		try{
-			PublicKey publicKey = server_blob.getPublicKey();
-			PrintWriter out = new PrintWriter(client.getOutputStream(), true);
+			PublicKey publicKey = this.server_blob.getPublicKey();
+			PrintWriter out = new PrintWriter(this.client.getOutputStream(), true);
 			ObjectOutputStream objectOut = new ObjectOutputStream(client.getOutputStream());
 			objectOut.writeObject(publicKey);
 			objectOut.flush();
@@ -77,9 +83,9 @@ class EchoHandler extends Thread {
                 ivbytes[i] = rec[i];
             }
 						
-						System.out.println("IV Encrypted bytes");
+			System.out.println("IV Encrypted bytes");
 
-						for(int i = 0; i < 16; ++i){
+			for(int i = 0; i < 16; ++i){
                System.out.print(ivbytes[i]);     
             }
 
@@ -89,27 +95,28 @@ class EchoHandler extends Thread {
                clientSymmetric[i - 16] = rec[i];
             }
 
-						System.out.println("\n\nClient Symmetric Encrypted bytes");
+			System.out.println("\n\nClient Symmetric Encrypted bytes");
 
-						for(int i = 0; i < 64; ++i){
+    		for(int i = 0; i < 64; ++i){
                System.out.print(clientSymmetric[i]);     
             }
 
 
     		decryptedsecret = server_blob.RSADecrypt(clientSymmetric);
     		sym = new SecretKeySpec(decryptedsecret, 0, decryptedsecret.length, "AES");
-				iv = new IvParameterSpec(ivbytes);
-				
+		    symKey.put(clientId, sym);	
 
-				// testing
-
-				String x = "Hello";
-				byte x1[] = x.getBytes();
+                
+            
+			// testing
+            /*
+			String x = "Hello";
+			byte x1[] = x.getBytes();
     		byte message[] = server_blob.encrypt(x1, sym, iv);
     		byte finaltest[] = server_blob.decrypt(message, sym, iv);
     		String s = new String(finaltest);
     		System.out.println("\n\n" + s);
-    		
+    		*/
 
     		/*
     		String cipher = ""; 
@@ -222,44 +229,24 @@ class EchoHandler extends Thread {
 
 	private String receiveEncrypted(){
 		try {
-			//String input = "";
-			//byte rec[] = new byte[16];
-			//yte output[] = new byte[16];
-			String input = "Yo";
-			
-			String testing = "test";
-			byte t[] = testing.getBytes();
-			
+            byte input[] = new byte[128];
+			byte ivBytes[] = new byte[16];
 
-  		byte tenc[] = server_blob.encrypt(t, sym, iv);
-
-			for(int i = 0; i < t.length; ++i){
-				System.out.println("Byte " + i + ": " +tenc[i]);
-			}
-
-  		//byte testfinal[] = server_blob.decrypt(tenc, sym, iv);
-  		//String s = new String(testfinal);
-  		//System.out.println(s);
-			
-
-
-
-			
-			System.out.println("Waiting to recieve encrypted text");
-
-		  InputStream in = client.getInputStream();
-			/*
-    	DataInputStream dis = new DataInputStream(in);
-			dis.readFully(rec);
-
-			System.out.println("Read in encrypted text");
-
-			output = server_blob.decrypt(rec, this.sym, this.iv);
-
-			String tmp = new String(output);
-			input = tmp;
-			*/
-			return input;
+            System.out.println("Waiting to recieve encrypted text");
+    
+			InputStream in = client.getInputStream();
+    		DataInputStream dis = new DataInputStream(in);
+		    dis.read(input);
+            byte[] cipherText = input;
+            for(int i = 0; i < 16; ++i){
+                
+            
+            }
+            System.out.println("After getting data");
+            byte[] output = server_blob.decrypt(cipherText, sym, iv);        
+		    	
+            String out = new String(output);
+            return out;
 		}
 		catch (Exception e) {
 			System.err.println("Exception caught: client disconnected.");
@@ -275,7 +262,7 @@ class EchoHandler extends Thread {
 	public void run () {
 
 		if (!encryptionStatus){
-			encryptionSetup(client, server_blob, sym, iv);
+			encryptionSetup();
 			encryptionStatus = true;
 		}
 
