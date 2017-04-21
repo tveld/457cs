@@ -153,8 +153,20 @@ class Listener extends Thread {
             System.out.println("Attempting : " + sendMe);
             byte[] plainMess = sendMe.getBytes();
             byte[] message = serverKey.encrypt(plainMess, sec, iv);
+            //System.out.printf("Message: %s%n",DatatypeConverter.printHexBinary(message));
+            System.out.println();
+
+            for(int i = 0; i < message.length; ++i){
+                System.out.print(message[i]);
+            }
+            System.out.println();
+            
             OutputStream out = server.getOutputStream();
             DataOutputStream dos = new DataOutputStream(out);
+            int size = message.length;
+            System.out.println("Sent message of size: " + size);
+            dos.writeInt(size);
+            dos.flush();
             dos.write(message,0, message.length);
             dos.flush();
         } catch(Exception e){

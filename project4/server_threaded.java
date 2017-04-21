@@ -102,10 +102,12 @@ class EchoHandler extends Thread {
             }
 
 
+    		iv = new IvParameterSpec(ivbytes);
     		decryptedsecret = server_blob.RSADecrypt(clientSymmetric);
     		sym = new SecretKeySpec(decryptedsecret, 0, decryptedsecret.length, "AES");
 		    symKey.put(clientId, sym);	
-
+                
+            
                 
             
 			// testing
@@ -116,7 +118,6 @@ class EchoHandler extends Thread {
     		byte finaltest[] = server_blob.decrypt(message, sym, iv);
     		String s = new String(finaltest);
     		System.out.println("\n\n" + s);
-    		*/
 
     		/*
     		String cipher = ""; 
@@ -231,17 +232,24 @@ class EchoHandler extends Thread {
 		try {
             byte input[] = new byte[128];
 			byte ivBytes[] = new byte[16];
-
+            byte size[] = new byte[4];
+            int byteLength;
             System.out.println("Waiting to recieve encrypted text");
     
 			InputStream in = client.getInputStream();
     		DataInputStream dis = new DataInputStream(in);
-		    dis.read(input);
-            byte[] cipherText = input;
-            for(int i = 0; i < 16; ++i){
-                
+            byteLength = dis.readInt(); 
+            System.out.println("Attempting to read " + byteLength + " bytes");
+            byte[] cipherText = new byte[byteLength];
+            dis.readFully(cipherText);
+            System.out.println();
+             for(int i = 0; i < cipherText.length; ++i){
+                 System.out.print(cipherText[i]);
+             }
+             System.out.println();
+ 
+           // System.out.printf("CipherText: %s%n",DatatypeConverter.printHexBinary(cipherText)); 
             
-            }
             System.out.println("After getting data");
             byte[] output = server_blob.decrypt(cipherText, sym, iv);        
 		    	
